@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from app.services.providers import fetch_weather_open_meteo, fetch_river_level_ina_auto
+from app.services.providers import fetch_weather, fetch_river
 
 
 def calcular_semaforo(data: dict) -> str:
@@ -36,24 +36,23 @@ def build_estado() -> dict:
 
     weather = {}
     try:
-        weather = fetch_weather_open_meteo()
+        weather = fetch_weather()
         fuentes.append(weather.get("weather_source", "open-meteo"))
     except Exception as e:
         errors.append(f"weather: {e}")
 
     river = {}
     try:
-        river = fetch_river_level_ina_auto()
-        if river.get("nivel_rio_m") is not None:
-            fuentes.append(river.get("river_source", "ina"))
-        else:
-            errors.extend(river.get("river_errors", []))
+        river = fetch_river()
+        if river.get("river_source") and river.get("river_source") != "none":
+            fuentes.append(river.get("river_source"))
+        if river.get("river_errors"):
+            errors.extend(river.get("river_errors"))
     except Exception as e:
         errors.append(f"river: {e}")
         river = {
             "nivel_rio_m": None,
-            "river_source": "ina_unavailable",
-            "river_candidates_tested": [],
+            "river_source": "none",
             "river_errors": [str(e)],
         }
 
@@ -114,6 +113,5 @@ def build_estado() -> dict:
             "updated_at": datetime.now(timezone.utc).isoformat(),
             "zona": "Sarandí / Avellaneda",
             "errores_fuentes": errors,
-            "river_candidates_tested": river.get("river_candidates_tested", []),
         },
     }
