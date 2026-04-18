@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HydroGuard Avellaneda</title>
+  <link rel="stylesheet" href="/web/styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div>
+        <h1>HydroGuard Avellaneda</h1>
+        <p class="subtitle">Semáforo hídrico para Sarandí / Avellaneda</p>
+      </div>
+      <button id="refreshBtn" class="refresh-btn">Actualizar</button>
+    </header>
+
+    <main class="content">
+      <section class="hero">
+        <div id="statusCard" class="status-card neutral">
+          <div class="status-main">
+            <span id="statusDot" class="status-dot"></span>
+            <div>
+              <div class="status-label">Estado actual</div>
+              <div id="statusText" class="status-text">Cargando…</div>
+            </div>
+          </div>
+          <div id="updatedAt" class="updated-at">Consultando backend…</div>
+        </div>
+      </section>
+
+      <section class="grid">
+        <article class="panel">
+          <h2>Interpretación</h2>
+          <p id="interpretacion">Esperando datos…</p>
+        </article>
+
+        <article class="panel">
+          <h2>Conclusión</h2>
+          <p id="conclusion">Esperando datos…</p>
+        </article>
+
+        <article class="panel">
+          <h2>Checklist operativo</h2>
+          <ul id="checklist" class="checklist">
+            <li>Cargando…</li>
+          </ul>
+        </article>
+
+        <article class="panel">
+          <h2>Variables medidas</h2>
+          <div id="metrics" class="metrics"></div>
+        </article>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <span id="zona">Zona: --</span>
+      <span id="fuentes">Fuentes: --</span>
+    </footer>
+  </div>
+
+  <script src="/web/app.js"></script>
+</body>
+</html>
