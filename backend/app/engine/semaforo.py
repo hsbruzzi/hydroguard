@@ -17,7 +17,7 @@ def calcular_semaforo(data: dict) -> str:
     if alerta_meteo in ["naranja", "rojo"]:
         return "ROJO"
 
-    # 2. Umbrales oficiales del río (si hay nivel real)
+    # 2. Umbrales oficiales del río (solo si hay nivel real)
     if nivel_rio is not None and evacuacion_rio is not None and nivel_rio >= evacuacion_rio:
         return "ROJO"
 
@@ -28,7 +28,7 @@ def calcular_semaforo(data: dict) -> str:
     if data.get("lluvia_24h_mm", 0) > 80 or data.get("intensidad_mm_h", 0) > 40:
         return "ROJO"
 
-    # 4. Lluvias importantes o combinación con río alto
+    # 4. Lluvias importantes o río alto
     if (
         data.get("lluvia_24h_mm", 0) > 40
         or data.get("intensidad_mm_h", 0) > 20
