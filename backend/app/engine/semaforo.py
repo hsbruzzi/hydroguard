@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+
 from app.services.providers import fetch_weather, fetch_river
 
 
@@ -24,6 +25,10 @@ def calcular_semaforo(data: dict) -> str:
             and nivel_rio > 2.5
             and direccion_viento in ["SE", "ESE", "SSE"]
         )
+        or (
+            nivel_rio is not None
+            and nivel_rio > 2.0
+        )
     ):
         return "AMARILLO"
 
@@ -34,20 +39,32 @@ def build_estado() -> dict:
     errors = []
     fuentes = []
 
+    # WEATHER
     weather = {}
     try:
         weather = fetch_weather()
-        fuentes.append(weather.get("weather_source", "open-meteo"))
+        if weather.get("weather_source"):
+            fuentes.append(weather["weather_source"])
     except Exception as e:
         errors.append(f"weather: {e}")
+        weather = {
+            "lluvia_actual_mm": 0,
+            "lluvia_24h_mm": 0,
+            "intensidad_mm_h": 0,
+            "lluvia_3dias_mm": 0,
+            "viento_kmh": 0,
+            "direccion_viento": "--",
+            "weather_source": "none",
+        }
 
+    # RIVER
     river = {}
     try:
         river = fetch_river()
-        if river.get("river_source") and river.get("river_source") != "none":
-            fuentes.append(river.get("river_source"))
+        if river.get("river_source"):
+            fuentes.append(river["river_source"])
         if river.get("river_errors"):
-            errors.extend(river.get("river_errors"))
+            errors.extend(river["river_errors"])
     except Exception as e:
         errors.append(f"river: {e}")
         river = {
