@@ -1,11 +1,9 @@
-from __future__ import annotations
-
 from datetime import datetime, timezone
 
 from app.services.providers import fetch_weather, fetch_river
 
 
-def calcular_semaforo(data: dict) -> str:
+def calcular_semaforo(data):
     alerta_meteo = (data.get("alerta_smn") or "").lower()
 
     nivel_rio = data.get("nivel_rio_m")
@@ -13,22 +11,18 @@ def calcular_semaforo(data: dict) -> str:
     evacuacion_rio = data.get("evacuacion_rio_m")
     direccion_viento = (data.get("direccion_viento") or "").upper()
 
-    # 1. Alertas meteorológicas
     if alerta_meteo in ["naranja", "rojo"]:
         return "ROJO"
 
-    # 2. Umbrales oficiales del río (solo si hay nivel real)
     if nivel_rio is not None and evacuacion_rio is not None and nivel_rio >= evacuacion_rio:
         return "ROJO"
 
     if nivel_rio is not None and alerta_rio is not None and nivel_rio >= alerta_rio:
         return "AMARILLO"
 
-    # 3. Lluvias extremas
     if data.get("lluvia_24h_mm", 0) > 80 or data.get("intensidad_mm_h", 0) > 40:
         return "ROJO"
 
-    # 4. Lluvias importantes o combinación con río alto
     if (
         data.get("lluvia_24h_mm", 0) > 40
         or data.get("intensidad_mm_h", 0) > 20
@@ -48,18 +42,17 @@ def calcular_semaforo(data: dict) -> str:
     return "VERDE"
 
 
-def build_estado() -> dict:
+def build_estado():
     errors = []
     fuentes = []
 
-    # WEATHER
     weather = {}
     try:
         weather = fetch_weather()
         if weather.get("weather_source"):
             fuentes.append(weather["weather_source"])
     except Exception as e:
-        errors.append(f"weather: {e}")
+        errors.append("weather: " + str(e))
         weather = {
             "lluvia_actual_mm": 0,
             "lluvia_24h_mm": 0,
@@ -70,7 +63,6 @@ def build_estado() -> dict:
             "weather_source": "none",
         }
 
-    # RIVER
     river = {}
     try:
         river = fetch_river()
@@ -81,7 +73,7 @@ def build_estado() -> dict:
         if river.get("river_errors"):
             errors.extend(river["river_errors"])
     except Exception as e:
-        errors.append(f"river: {e}")
+        errors.append("river: " + str(e))
         river = {
             "nivel_rio_m": None,
             "river_source": "none",
@@ -129,24 +121,24 @@ def build_estado() -> dict:
         conclusion = "VERDE: monitoreo normal, sin acción preventiva especial por ahora."
 
     checklist = [
-        f"Alerta oficial: {data['alerta_smn'].upper()}",
-        f"Lluvia actual: {data['lluvia_actual_mm']} mm",
-        f"Lluvia últimas 24 h: {data['lluvia_24h_mm']} mm",
-        f"Intensidad estimada: {data['intensidad_mm_h']} mm/h",
-        f"Lluvia acumulada 3 días: {data['lluvia_3dias_mm']} mm",
+        "Alerta oficial: " + data["alerta_smn"].upper(),
+        "Lluvia actual: " + str(data["lluvia_actual_mm"]) + " mm",
+        "Lluvia últimas 24 h: " + str(data["lluvia_24h_mm"]) + " mm",
+        "Intensidad estimada: " + str(data["intensidad_mm_h"]) + " mm/h",
+        "Lluvia acumulada 3 días: " + str(data["lluvia_3dias_mm"]) + " mm",
         (
-            f"Nivel del río: {data['nivel_rio_m']} m"
+            "Nivel del río: " + str(data["nivel_rio_m"]) + " m"
             if data["nivel_rio_m"] is not None
             else "Nivel del río: sin dato"
         ),
         (
-            f"Estación INA usada: {data['river_site_name']}"
+            "Estación usada: " + str(data["river_site_name"])
             if data["river_site_name"]
-            else "Estación INA usada: sin dato"
+            else "Estación usada: sin dato"
         ),
-        f"Nivel de alerta: {data['alerta_rio_m']} m",
-        f"Nivel de evacuación: {data['evacuacion_rio_m']} m",
-        f"Viento: {data['direccion_viento']} {data['viento_kmh']} km/h",
+        "Nivel de alerta: " + str(data["alerta_rio_m"]) + " m",
+        "Nivel de evacuación: " + str(data["evacuacion_rio_m"]) + " m",
+        "Viento: " + str(data["direccion_viento"]) + " " + str(data["viento_kmh"]) + " km/h",
     ]
 
     return {

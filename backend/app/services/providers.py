@@ -1,25 +1,18 @@
-from __future__ import annotations
-
-from typing import Any
-
+import pandas as pd
 import requests
+from io import StringIO
 
 OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast"
-INA_URL = "https://alerta.ina.gob.ar/pub/datos/datos"
+PREFECTURA_URL = "https://contenidosweb.prefecturanaval.gob.ar/alturas/"
 
 LAT = -34.684
 LON = -58.342
 
-# Umbrales oficiales de referencia para Buenos Aires / Río de la Plata
 DEFAULT_ALERTA_M = 3.30
 DEFAULT_EVACUACION_M = 3.90
 
-# Estaciones INA elegidas
-SITE_PALERMO = 52
-SITE_MARTIN_GARCIA = 47
 
-
-def _to_float(value: Any) -> float | None:
+def _to_float(value):
     if value is None:
         return None
 
@@ -36,7 +29,7 @@ def _to_float(value: Any) -> float | None:
         return None
 
 
-def grados_a_cardinal(deg: float) -> str:
+def grados_a_cardinal(deg):
     dirs = [
         "N", "NNE", "NE", "ENE",
         "E", "ESE", "SE", "SSE",
@@ -47,10 +40,7 @@ def grados_a_cardinal(deg: float) -> str:
     return dirs[ix]
 
 
-# -------------------------
-# WEATHER
-# -------------------------
-def fetch_weather() -> dict[str, Any]:
+def fetch_weather():
     params = {
         "latitude": LAT,
         "longitude": LON,
@@ -90,85 +80,79 @@ def fetch_weather() -> dict[str, Any]:
     }
 
 
-# -------------------------
-# INA
-# -------------------------
-def fetch_river_ina_site(site_code: int) -> dict[str, Any] | None:
-    """
-    Intenta leer el último valor de altura para una estación INA.
-    Probamos varios varId porque la API no siempre es consistente.
-    """
-    for var_id in [2, 1, 3]:
-        try:
-            params = {
-                "siteCode": site_code,
-                "varId": var_id,
+def fetch_river_prefectura():
+    try:
+        html = requests.get(
+            PREFECTURA_URL,
+            timeout=10,
+            headers={
+                "User-Agent": "Mozilla/5.0",
+                "Accept-Language": "es-AR,es;q=0.9,en;q=0.8",
+            },
+        ).text
+
+        tablas = pd.read_html(StringIO(html))
+        if not tablas:
+            return {
+                "nivel_rio_m": None,
+                "river_source": "none",
+                "river_site_name": None,
+                "alerta_rio_m": DEFAULT_ALERTA_M,
+                "evacuacion_rio_m": DEFAULT_EVACUACION_M,
+                "thresholds_source": "thresholds_default_buenos_aires",
+                "river_errors": ["Prefectura sin tablas"],
             }
 
-            r = requests.get(INA_URL, params=params, timeout=10)
-            r.raise_for_status()
-            data = r.json()
+        df = tablas[0]
+        df.columns = [" ".join(str(c).split()) for c in df.columns]
 
-            if isinstance(data, list) and len(data) > 0:
-                ultimo = data[-1]
-                valor = _to_float(ultimo.get("valor"))
+        fila = df[
+            df["Puerto"].astype(str).str.upper().str.contains("BUENOS AIRES", na=False)
+            & df["Río"].astype(str).str.upper().str.contains("PLATA", na=False)
+        ]
 
-                if valor is not None:
-                    return {
-                        "nivel_rio_m": round(valor, 2),
-                        "river_source": f"ina_site_{site_code}",
-                        "river_var_id": var_id,
-                    }
-        except Exception:
-            continue
+        if fila.empty:
+            return {
+                "nivel_rio_m": None,
+                "river_source": "none",
+                "river_site_name": None,
+                "alerta_rio_m": DEFAULT_ALERTA_M,
+                "evacuacion_rio_m": DEFAULT_EVACUACION_M,
+                "thresholds_source": "thresholds_default_buenos_aires",
+                "river_errors": ["Prefectura sin fila BUENOS AIRES / DE LA PLATA"],
+            }
 
-    return None
+        row = fila.iloc[0]
 
+        nivel = _to_float(row.get("Ult. registro"))
+        variacion = _to_float(row.get("Variación"))
+        alerta = _to_float(row.get("Alerta")) or DEFAULT_ALERTA_M
+        evacuacion = _to_float(row.get("Evacuación")) or DEFAULT_EVACUACION_M
+        estado = str(row.get("Estado")).strip().upper() if "Estado" in fila.columns else None
 
-def fetch_river() -> dict[str, Any]:
-    """
-    Estrategia:
-    1. INA Palermo (más cercano al Puerto de Buenos Aires)
-    2. INA Martín García (fallback regional)
-    3. Sin dato de nivel, pero manteniendo umbrales oficiales
-    """
-    errors: list[str] = []
+        return {
+            "nivel_rio_m": nivel,
+            "river_variacion_m": variacion,
+            "river_estado": estado,
+            "river_source": "prefectura_buenos_aires",
+            "river_site_name": "Buenos Aires / De la Plata",
+            "alerta_rio_m": alerta,
+            "evacuacion_rio_m": evacuacion,
+            "thresholds_source": "prefectura_buenos_aires",
+            "river_errors": [],
+        }
 
-    # 1. Palermo
-    try:
-        palermo = fetch_river_ina_site(SITE_PALERMO)
-        if palermo is not None:
-            palermo["river_site_name"] = "Palermo"
-            palermo["alerta_rio_m"] = DEFAULT_ALERTA_M
-            palermo["evacuacion_rio_m"] = DEFAULT_EVACUACION_M
-            palermo["thresholds_source"] = "thresholds_default_buenos_aires"
-            palermo["river_errors"] = errors
-            return palermo
-        errors.append("INA Palermo sin datos")
     except Exception as e:
-        errors.append(f"INA Palermo: {e}")
+        return {
+            "nivel_rio_m": None,
+            "river_source": "none",
+            "river_site_name": None,
+            "alerta_rio_m": DEFAULT_ALERTA_M,
+            "evacuacion_rio_m": DEFAULT_EVACUACION_M,
+            "thresholds_source": "thresholds_default_buenos_aires",
+            "river_errors": ["Prefectura error: " + str(e)],
+        }
 
-    # 2. Martín García
-    try:
-        mg = fetch_river_ina_site(SITE_MARTIN_GARCIA)
-        if mg is not None:
-            mg["river_site_name"] = "Martín García"
-            mg["alerta_rio_m"] = DEFAULT_ALERTA_M
-            mg["evacuacion_rio_m"] = DEFAULT_EVACUACION_M
-            mg["thresholds_source"] = "thresholds_default_buenos_aires"
-            mg["river_errors"] = errors
-            return mg
-        errors.append("INA Martín García sin datos")
-    except Exception as e:
-        errors.append(f"INA Martín García: {e}")
 
-    # 3. Sin dato real
-    return {
-        "nivel_rio_m": None,
-        "river_source": "none",
-        "river_site_name": None,
-        "alerta_rio_m": DEFAULT_ALERTA_M,
-        "evacuacion_rio_m": DEFAULT_EVACUACION_M,
-        "thresholds_source": "thresholds_default_buenos_aires",
-        "river_errors": errors,
-    }
+def fetch_river():
+    return fetch_river_prefectura()
