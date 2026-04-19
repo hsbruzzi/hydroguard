@@ -6,16 +6,29 @@ from app.services.providers import fetch_weather, fetch_river
 
 
 def calcular_semaforo(data: dict) -> str:
-    alerta = (data.get("alerta_smn") or "").lower()
+    alerta_meteo = (data.get("alerta_smn") or "").lower()
+
     nivel_rio = data.get("nivel_rio_m")
+    alerta_rio = data.get("alerta_rio_m")
+    evacuacion_rio = data.get("evacuacion_rio_m")
     direccion_viento = (data.get("direccion_viento") or "").upper()
 
-    if alerta in ["naranja", "rojo"]:
+    # 1. Alertas meteorológicas
+    if alerta_meteo in ["naranja", "rojo"]:
         return "ROJO"
 
+    # 2. Umbrales oficiales del río (si hay nivel real)
+    if nivel_rio is not None and evacuacion_rio is not None and nivel_rio >= evacuacion_rio:
+        return "ROJO"
+
+    if nivel_rio is not None and alerta_rio is not None and nivel_rio >= alerta_rio:
+        return "AMARILLO"
+
+    # 3. Lluvias extremas
     if data.get("lluvia_24h_mm", 0) > 80 or data.get("intensidad_mm_h", 0) > 40:
         return "ROJO"
 
+    # 4. Lluvias importantes o combinación con río alto
     if (
         data.get("lluvia_24h_mm", 0) > 40
         or data.get("intensidad_mm_h", 0) > 20
@@ -61,8 +74,10 @@ def build_estado() -> dict:
     river = {}
     try:
         river = fetch_river()
-        if river.get("river_source"):
+        if river.get("river_source") and river.get("river_source") != "none":
             fuentes.append(river["river_source"])
+        if river.get("thresholds_source"):
+            fuentes.append(river["thresholds_source"])
         if river.get("river_errors"):
             errors.extend(river["river_errors"])
     except Exception as e:
@@ -70,6 +85,9 @@ def build_estado() -> dict:
         river = {
             "nivel_rio_m": None,
             "river_source": "none",
+            "thresholds_source": "thresholds_default_buenos_aires",
+            "alerta_rio_m": 3.30,
+            "evacuacion_rio_m": 3.90,
             "river_errors": [str(e)],
         }
 
@@ -79,6 +97,8 @@ def build_estado() -> dict:
         "intensidad_mm_h": weather.get("intensidad_mm_h", 0),
         "lluvia_3dias_mm": weather.get("lluvia_3dias_mm", 0),
         "nivel_rio_m": river.get("nivel_rio_m", None),
+        "alerta_rio_m": river.get("alerta_rio_m", 3.30),
+        "evacuacion_rio_m": river.get("evacuacion_rio_m", 3.90),
         "viento_kmh": weather.get("viento_kmh", 0),
         "direccion_viento": weather.get("direccion_viento", "--"),
         "alerta_smn": "verde",
@@ -89,13 +109,14 @@ def build_estado() -> dict:
     if semaforo == "ROJO":
         interpretacion = (
             "Alta probabilidad de anegamiento. El sistema puede entrar en "
-            "sobrecarga y conviene tomar medidas preventivas inmediatas."
+            "sobrecarga por lluvia intensa, nivel del río elevado o superación "
+            "de umbrales oficiales."
         )
         conclusion = "ROJO: evitar desplazamientos innecesarios y proteger accesos bajos."
     elif semaforo == "AMARILLO":
         interpretacion = (
             "El sistema está bajo estrés moderado. Puede haber anegamientos "
-            "puntuales si se intensifica la lluvia o sube el río."
+            "puntuales si se intensifica la lluvia o si el río se acerca a umbrales críticos."
         )
         conclusion = "AMARILLO: reforzar monitoreo y revisar desagües cercanos."
     else:
@@ -116,6 +137,8 @@ def build_estado() -> dict:
             if data["nivel_rio_m"] is not None
             else "Nivel del río: sin dato"
         ),
+        f"Nivel de alerta: {data['alerta_rio_m']} m",
+        f"Nivel de evacuación: {data['evacuacion_rio_m']} m",
         f"Viento: {data['direccion_viento']} {data['viento_kmh']} km/h",
     ]
 
@@ -126,7 +149,7 @@ def build_estado() -> dict:
         "conclusion": conclusion,
         "datos": data,
         "meta": {
-            "fuentes": fuentes,
+            "fuentes": list(dict.fromkeys(fuentes)),
             "updated_at": datetime.now(timezone.utc).isoformat(),
             "zona": "Sarandí / Avellaneda",
             "errores_fuentes": errors,
