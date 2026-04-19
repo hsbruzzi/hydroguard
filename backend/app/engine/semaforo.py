@@ -28,7 +28,7 @@ def calcular_semaforo(data: dict) -> str:
     if data.get("lluvia_24h_mm", 0) > 80 or data.get("intensidad_mm_h", 0) > 40:
         return "ROJO"
 
-    # 4. Lluvias importantes o río alto
+    # 4. Lluvias importantes o combinación con río alto
     if (
         data.get("lluvia_24h_mm", 0) > 40
         or data.get("intensidad_mm_h", 0) > 20
@@ -85,6 +85,7 @@ def build_estado() -> dict:
         river = {
             "nivel_rio_m": None,
             "river_source": "none",
+            "river_site_name": None,
             "thresholds_source": "thresholds_default_buenos_aires",
             "alerta_rio_m": 3.30,
             "evacuacion_rio_m": 3.90,
@@ -99,6 +100,7 @@ def build_estado() -> dict:
         "nivel_rio_m": river.get("nivel_rio_m", None),
         "alerta_rio_m": river.get("alerta_rio_m", 3.30),
         "evacuacion_rio_m": river.get("evacuacion_rio_m", 3.90),
+        "river_site_name": river.get("river_site_name", None),
         "viento_kmh": weather.get("viento_kmh", 0),
         "direccion_viento": weather.get("direccion_viento", "--"),
         "alerta_smn": "verde",
@@ -136,6 +138,11 @@ def build_estado() -> dict:
             f"Nivel del río: {data['nivel_rio_m']} m"
             if data["nivel_rio_m"] is not None
             else "Nivel del río: sin dato"
+        ),
+        (
+            f"Estación INA usada: {data['river_site_name']}"
+            if data["river_site_name"]
+            else "Estación INA usada: sin dato"
         ),
         f"Nivel de alerta: {data['alerta_rio_m']} m",
         f"Nivel de evacuación: {data['evacuacion_rio_m']} m",
