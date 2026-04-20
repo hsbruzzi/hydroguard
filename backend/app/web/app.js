@@ -18,11 +18,11 @@ function setText(id, text) {
   if (el) el.textContent = text;
 }
 
-function getSemaforoColorClass(semaforo) {
+function getSemaforoClass(semaforo) {
   const s = String(semaforo || "").toUpperCase();
-  if (s === "ROJO") return "estado-rojo";
-  if (s === "AMARILLO") return "estado-amarillo";
-  return "estado-verde";
+  if (s === "ROJO") return "rojo";
+  if (s === "AMARILLO") return "amarillo";
+  return "verde";
 }
 
 function renderChecklist(items) {
@@ -40,7 +40,10 @@ function ensureForecastContainer() {
   let section = document.getElementById("forecast-section");
   if (section) return section;
 
-  const anchor = document.querySelector(".footer-row") || document.querySelector(".app") || document.body;
+  const appShell = document.querySelector(".app-shell");
+  if (!appShell) return null;
+
+  const footer = appShell.querySelector(".footer");
 
   section = document.createElement("section");
   section.id = "forecast-section";
@@ -55,18 +58,31 @@ function ensureForecastContainer() {
     <div id="forecast-grid" class="forecast-grid"></div>
   `;
 
-  anchor.parentNode.insertBefore(section, anchor);
+  if (footer) {
+    appShell.insertBefore(section, footer);
+  } else {
+    appShell.appendChild(section);
+  }
+
   return section;
 }
 
 function renderForecast(pronostico) {
-  ensureForecastContainer();
+  const section = ensureForecastContainer();
+  if (!section) return;
+
   const grid = document.getElementById("forecast-grid");
   if (!grid) return;
 
   grid.innerHTML = "";
 
-  (pronostico || []).forEach((dia) => {
+  const items = pronostico || [];
+  if (!items.length) {
+    grid.innerHTML = `<div class="forecast-empty">Sin pronóstico disponible.</div>`;
+    return;
+  }
+
+  items.forEach((dia) => {
     const card = document.createElement("div");
     card.className = "forecast-card";
 
@@ -105,17 +121,16 @@ function renderEstado(payload) {
   setText("interpretacion", payload.interpretacion || "-");
   setText("conclusion", payload.conclusion || "-");
 
-  const estadoDot = document.getElementById("estado-dot");
-  const estadoLabel = document.getElementById("semaforo-label");
-
-  if (estadoDot) {
-    estadoDot.classList.remove("estado-verde", "estado-amarillo", "estado-rojo");
-    estadoDot.classList.add(getSemaforoColorClass(semaforo));
+  const statusCard = document.querySelector(".status-card");
+  if (statusCard) {
+    statusCard.classList.remove("verde", "amarillo", "rojo");
+    statusCard.classList.add(getSemaforoClass(semaforo));
   }
 
+  const estadoLabel = document.getElementById("semaforo-label");
   if (estadoLabel) {
     estadoLabel.classList.remove("texto-verde", "texto-amarillo", "texto-rojo");
-    estadoLabel.classList.add(getSemaforoColorClass(semaforo).replace("estado-", "texto-"));
+    estadoLabel.classList.add(`texto-${getSemaforoClass(semaforo)}`);
   }
 
   setText("v-lluvia-actual", `${fmtNumber(datos.lluvia_actual_mm, 1)} mm`);
