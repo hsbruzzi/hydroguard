@@ -61,6 +61,7 @@ def build_estado():
             "viento_kmh": 0,
             "direccion_viento": "--",
             "weather_source": "none",
+            "pronostico_5dias": [],
         }
 
     river = {}
@@ -96,6 +97,7 @@ def build_estado():
         "viento_kmh": weather.get("viento_kmh", 0),
         "direccion_viento": weather.get("direccion_viento", "--"),
         "alerta_smn": "verde",
+        "pronostico_5dias": weather.get("pronostico_5dias", []),
     }
 
     semaforo = calcular_semaforo(data)
