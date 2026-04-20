@@ -49,3 +49,55 @@ h1{margin:0;font-size:1.8rem;}
   .metrics{grid-template-columns:1fr 1fr}
   .footer{flex-direction:column}
 }
+.forecast-panel {
+  margin-top: 24px;
+}
+
+.panel-header h2 {
+  margin: 0 0 6px 0;
+}
+
+.forecast-subtitle {
+  margin: 0 0 16px 0;
+  opacity: 0.85;
+  line-height: 1.4;
+}
+
+.forecast-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px;
+}
+
+.forecast-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.forecast-date {
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.forecast-condition {
+  margin-bottom: 12px;
+  opacity: 0.95;
+  min-height: 42px;
+}
+
+.forecast-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.estado-verde { background-color: #19c15f; }
+.estado-amarillo { background-color: #e6c229; }
+.estado-rojo { background-color: #df3b3b; }
+
+.texto-verde { color: #19c15f; }
+.texto-amarillo { color: #e6c229; }
+.texto-rojo { color: #df3b3b; }

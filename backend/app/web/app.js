@@ -1,84 +1,152 @@
-const endpoint = '/estado';
-
-function fmtUpdatedAt(isoString) {
-  if (!isoString) return 'Sin hora de actualización';
-  const d = new Date(isoString);
-  return `Actualizado: ${d.toLocaleString('es-AR')}`;
+async function fetchEstado() {
+  const resp = await fetch("/estado", { cache: "no-store" });
+  if (!resp.ok) {
+    throw new Error(`HTTP ${resp.status}`);
+  }
+  return await resp.json();
 }
 
-function renderMetric(label, value) {
-  return `
-    <div class="metric">
-      <div class="label">${label}</div>
-      <div class="value">${value}</div>
+function fmtNumber(value, digits = 1) {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) {
+    return "Sin dato";
+  }
+  return Number(value).toFixed(digits).replace(".0", "");
+}
+
+function setText(id, text) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = text;
+}
+
+function getSemaforoColorClass(semaforo) {
+  const s = String(semaforo || "").toUpperCase();
+  if (s === "ROJO") return "estado-rojo";
+  if (s === "AMARILLO") return "estado-amarillo";
+  return "estado-verde";
+}
+
+function renderChecklist(items) {
+  const ul = document.getElementById("checklist");
+  if (!ul) return;
+  ul.innerHTML = "";
+  (items || []).forEach((item) => {
+    const li = document.createElement("li");
+    li.textContent = item;
+    ul.appendChild(li);
+  });
+}
+
+function ensureForecastContainer() {
+  let section = document.getElementById("forecast-section");
+  if (section) return section;
+
+  const anchor = document.querySelector(".footer-row") || document.querySelector(".app") || document.body;
+
+  section = document.createElement("section");
+  section.id = "forecast-section";
+  section.className = "panel forecast-panel";
+  section.innerHTML = `
+    <div class="panel-header">
+      <h2>Pronóstico próximos 5 días</h2>
+      <p class="forecast-subtitle">
+        Referencia útil para anticipar cuándo podría aflojar la lluvia o mejorar el tiempo.
+      </p>
     </div>
+    <div id="forecast-grid" class="forecast-grid"></div>
   `;
+
+  anchor.parentNode.insertBefore(section, anchor);
+  return section;
 }
 
-function mapEstadoClass(semaforo) {
-  const s = (semaforo || '').toLowerCase();
-  if (s.includes('verde')) return 'verde';
-  if (s.includes('amarillo')) return 'amarillo';
-  if (s.includes('rojo')) return 'rojo';
-  return 'neutral';
+function renderForecast(pronostico) {
+  ensureForecastContainer();
+  const grid = document.getElementById("forecast-grid");
+  if (!grid) return;
+
+  grid.innerHTML = "";
+
+  (pronostico || []).forEach((dia) => {
+    const card = document.createElement("div");
+    card.className = "forecast-card";
+
+    const lluvia = dia.lluvia_mm ?? null;
+    const prob = dia.prob_lluvia_pct ?? null;
+    const tmax = dia.temp_max_c ?? null;
+    const tmin = dia.temp_min_c ?? null;
+
+    card.innerHTML = `
+      <div class="forecast-date">${dia.fecha || "Sin fecha"}</div>
+      <div class="forecast-condition">${dia.condicion || "Sin dato"}</div>
+      <div class="forecast-row"><span>Lluvia</span><strong>${fmtNumber(lluvia, 1)} mm</strong></div>
+      <div class="forecast-row"><span>Probabilidad</span><strong>${fmtNumber(prob, 0)}%</strong></div>
+      <div class="forecast-row"><span>Máx</span><strong>${fmtNumber(tmax, 1)} °C</strong></div>
+      <div class="forecast-row"><span>Mín</span><strong>${fmtNumber(tmin, 1)} °C</strong></div>
+    `;
+    grid.appendChild(card);
+  });
 }
 
-function formatMeters(value) {
-  if (value === null || value === undefined) return 'Sin dato';
-  return `${value} m`;
+function renderFuentes(meta) {
+  const fuentes = (meta && meta.fuentes) ? meta.fuentes.join(", ") : "Sin dato";
+  setText("fuentes", `Fuentes: ${fuentes}`);
+}
+
+function renderEstado(payload) {
+  const semaforo = payload.semaforo || "VERDE";
+  const datos = payload.datos || {};
+  const meta = payload.meta || {};
+
+  setText("semaforo-label", semaforo);
+  setText(
+    "updated-at",
+    `Actualizado: ${new Date(meta.updated_at || Date.now()).toLocaleString("es-AR")}`
+  );
+  setText("interpretacion", payload.interpretacion || "-");
+  setText("conclusion", payload.conclusion || "-");
+
+  const estadoDot = document.getElementById("estado-dot");
+  const estadoLabel = document.getElementById("semaforo-label");
+
+  if (estadoDot) {
+    estadoDot.classList.remove("estado-verde", "estado-amarillo", "estado-rojo");
+    estadoDot.classList.add(getSemaforoColorClass(semaforo));
+  }
+
+  if (estadoLabel) {
+    estadoLabel.classList.remove("texto-verde", "texto-amarillo", "texto-rojo");
+    estadoLabel.classList.add(getSemaforoColorClass(semaforo).replace("estado-", "texto-"));
+  }
+
+  setText("v-lluvia-actual", `${fmtNumber(datos.lluvia_actual_mm, 1)} mm`);
+  setText("v-lluvia-24h", `${fmtNumber(datos.lluvia_24h_mm, 1)} mm`);
+  setText("v-intensidad", `${fmtNumber(datos.intensidad_mm_h, 1)} mm/h`);
+  setText("v-lluvia-3dias", `${fmtNumber(datos.lluvia_3dias_mm, 1)} mm`);
+  setText("v-nivel-rio", datos.nivel_rio_m == null ? "Sin dato" : `${fmtNumber(datos.nivel_rio_m, 2)} m`);
+  setText("v-nivel-alerta", `${fmtNumber(datos.alerta_rio_m, 1)} m`);
+  setText("v-nivel-evac", `${fmtNumber(datos.evacuacion_rio_m, 1)} m`);
+  setText("v-viento", `${datos.direccion_viento || "--"} ${fmtNumber(datos.viento_kmh, 1)} km/h`);
+
+  renderChecklist(payload.checklist || []);
+  renderFuentes(meta);
+  renderForecast(datos.pronostico_5dias || []);
 }
 
 async function loadEstado() {
-  const btn = document.getElementById('refreshBtn');
-  btn.disabled = true;
-  btn.textContent = 'Actualizando…';
-
   try {
-    const res = await fetch(endpoint, { cache: 'no-store' });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-
-    const statusCard = document.getElementById('statusCard');
-    statusCard.className = `status-card ${mapEstadoClass(data.semaforo)}`;
-
-    document.getElementById('statusText').textContent = data.semaforo || '--';
-    document.getElementById('updatedAt').textContent = fmtUpdatedAt(data?.meta?.updated_at);
-    document.getElementById('interpretacion').textContent = data.interpretacion || '--';
-    document.getElementById('conclusion').textContent = data.conclusion || '--';
-
-    const checklist = document.getElementById('checklist');
-    checklist.innerHTML = '';
-    (data.checklist || []).forEach(item => {
-      const li = document.createElement('li');
-      li.textContent = item;
-      checklist.appendChild(li);
-    });
-
-    const d = data.datos || {};
-    document.getElementById('metrics').innerHTML = [
-      renderMetric('Lluvia actual', `${d.lluvia_actual_mm ?? '--'} mm`),
-      renderMetric('Lluvia 24 h', `${d.lluvia_24h_mm ?? '--'} mm`),
-      renderMetric('Intensidad', `${d.intensidad_mm_h ?? '--'} mm/h`),
-      renderMetric('Lluvia 3 días', `${d.lluvia_3dias_mm ?? '--'} mm`),
-      renderMetric('Nivel del río', formatMeters(d.nivel_rio_m)),
-      renderMetric('Nivel de alerta', formatMeters(d.alerta_rio_m)),
-      renderMetric('Nivel de evacuación', formatMeters(d.evacuacion_rio_m)),
-      renderMetric('Viento', `${d.direccion_viento ?? '--'} ${d.viento_kmh ?? '--'} km/h`)
-    ].join('');
-
-    document.getElementById('zona').textContent = `Zona: ${data?.meta?.zona || '--'}`;
-    document.getElementById('fuentes').textContent = `Fuentes: ${(data?.meta?.fuentes || []).join(', ') || '--'}`;
+    const data = await fetchEstado();
+    renderEstado(data);
   } catch (err) {
-    document.getElementById('statusText').textContent = 'ERROR';
-    document.getElementById('interpretacion').textContent = 'No pude leer el backend. Verificá que FastAPI siga corriendo.';
-    document.getElementById('conclusion').textContent = String(err);
-    document.getElementById('checklist').innerHTML = '<li>Backend inaccesible</li><li>Revisar servicio</li>';
-    document.getElementById('metrics').innerHTML = '';
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Actualizar';
+    console.error(err);
+    setText("interpretacion", "No se pudo cargar el estado actual.");
+    setText("conclusion", "Error al consultar el backend.");
   }
 }
 
-document.getElementById('refreshBtn').addEventListener('click', loadEstado);
-loadEstado();
+document.addEventListener("DOMContentLoaded", () => {
+  const btn = document.getElementById("btn-refresh");
+  if (btn) {
+    btn.addEventListener("click", loadEstado);
+  }
+  loadEstado();
+});
