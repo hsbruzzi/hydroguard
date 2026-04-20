@@ -1,8 +1,8 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>HydroGuard Avellaneda</title>
   <link rel="stylesheet" href="/web/styles.css" />
 </head>
@@ -13,51 +13,87 @@
         <h1>HydroGuard Avellaneda</h1>
         <p class="subtitle">Semáforo hídrico para Sarandí / Avellaneda</p>
       </div>
-      <button id="refreshBtn" class="refresh-btn">Actualizar</button>
+      <button id="btn-refresh" class="refresh-btn">Actualizar</button>
     </header>
 
-    <main class="content">
-      <section class="hero">
-        <div id="statusCard" class="status-card neutral">
-          <div class="status-main">
-            <span id="statusDot" class="status-dot"></span>
-            <div>
-              <div class="status-label">Estado actual</div>
-              <div id="statusText" class="status-text">Cargando…</div>
-            </div>
+    <section class="hero">
+      <div class="status-card verde">
+        <div class="status-main">
+          <span class="status-dot" id="estado-dot"></span>
+          <div>
+            <div class="status-label">Estado actual</div>
+            <div class="status-text" id="semaforo-label">Cargando...</div>
           </div>
-          <div id="updatedAt" class="updated-at">Consultando backend…</div>
         </div>
+        <div class="updated-at" id="updated-at">Consultando backend...</div>
+      </div>
+    </section>
+
+    <main class="grid">
+      <section class="panel">
+        <h2>Interpretación</h2>
+        <p id="interpretacion">Cargando interpretación...</p>
       </section>
 
-      <section class="grid">
-        <article class="panel">
-          <h2>Interpretación</h2>
-          <p id="interpretacion">Esperando datos…</p>
-        </article>
+      <section class="panel">
+        <h2>Conclusión</h2>
+        <p id="conclusion">Cargando conclusión...</p>
+      </section>
 
-        <article class="panel">
-          <h2>Conclusión</h2>
-          <p id="conclusion">Esperando datos…</p>
-        </article>
+      <section class="panel">
+        <h2>Checklist operativo</h2>
+        <ul id="checklist" class="checklist"></ul>
+      </section>
 
-        <article class="panel">
-          <h2>Checklist operativo</h2>
-          <ul id="checklist" class="checklist">
-            <li>Cargando…</li>
-          </ul>
-        </article>
+      <section class="panel">
+        <h2>Variables medidas</h2>
+        <div class="metrics">
+          <div class="metric">
+            <div class="label">Lluvia actual</div>
+            <div class="value" id="v-lluvia-actual">--</div>
+          </div>
 
-        <article class="panel">
-          <h2>Variables medidas</h2>
-          <div id="metrics" class="metrics"></div>
-        </article>
+          <div class="metric">
+            <div class="label">Lluvia 24 h</div>
+            <div class="value" id="v-lluvia-24h">--</div>
+          </div>
+
+          <div class="metric">
+            <div class="label">Intensidad</div>
+            <div class="value" id="v-intensidad">--</div>
+          </div>
+
+          <div class="metric">
+            <div class="label">Lluvia 3 días</div>
+            <div class="value" id="v-lluvia-3dias">--</div>
+          </div>
+
+          <div class="metric">
+            <div class="label">Nivel del río</div>
+            <div class="value" id="v-nivel-rio">--</div>
+          </div>
+
+          <div class="metric">
+            <div class="label">Nivel de alerta</div>
+            <div class="value" id="v-nivel-alerta">--</div>
+          </div>
+
+          <div class="metric">
+            <div class="label">Nivel de evacuación</div>
+            <div class="value" id="v-nivel-evac">--</div>
+          </div>
+
+          <div class="metric">
+            <div class="label">Viento</div>
+            <div class="value" id="v-viento">--</div>
+          </div>
+        </div>
       </section>
     </main>
 
     <footer class="footer">
-      <span id="zona">Zona: --</span>
-      <span id="fuentes">Fuentes: --</span>
+      <div>Zona: Sarandí / Avellaneda</div>
+      <div id="fuentes">Fuentes: --</div>
     </footer>
   </div>
 
