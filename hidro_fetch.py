@@ -15,43 +15,51 @@ def fetch_hidro():
 
         tree = html.fromstring(r.content)
 
-        rows = tree.xpath("//table//tr")
+        # Buscar la fila que contiene el link con data-nombre="Buenos Aires"
+        row = tree.xpath('//tr[.//a[@data-nombre="Buenos Aires"]]')
+        if not row:
+            print("[Hidro] no se encontró la fila de Buenos Aires")
+            return None
 
-        for row in rows:
-            cells = [c.text_content().strip() for c in row.xpath(".//td")]
-            if not cells:
+        row = row[0]
+
+        # Tomar todos los td de la fila
+        tds = row.xpath('./td')
+        if len(tds) < 3:
+            print("[Hidro] fila Buenos Aires encontrada pero con estructura inesperada")
+            return None
+
+        # Los dos primeros td suelen ser:
+        # 0 = icono
+        # 1 = nombre de estación
+        # desde 2 en adelante = valores horarios
+        values = []
+        for td in tds[2:]:
+            text = td.text_content().strip()
+            if not text:
+                continue
+            if text.upper() == "S/D":
+                continue
+            try:
+                values.append(float(text.replace(",", ".")))
+            except ValueError:
                 continue
 
-            station = cells[0].strip().lower()
-            print(f"[DEBUG][Hidro] estación detectada: {station}")
+        if not values:
+            print("[Hidro] Buenos Aires encontrada pero sin valores numéricos válidos")
+            return None
 
-            if "buenos aires" in station:
-                values = cells[1:]
-                valid_values = []
+        latest_value = values[0]
 
-                for v in values:
-                    vv = v.strip()
-                    if not vv:
-                        continue
-                    if vv.upper() == "S/D":
-                        continue
-                    valid_values.append(vv)
+        data = {
+            "source": "hidro_html",
+            "station": "Buenos Aires",
+            "value_m": latest_value,
+            "timestamp": datetime.utcnow().isoformat()
+        }
 
-                if not valid_values:
-                    print("[Hidro] fila Buenos Aires encontrada pero sin valores válidos")
-                    return None
-
-                latest_value = valid_values[0]
-
-                return {
-                    "source": "hidro_html",
-                    "station": "Buenos Aires",
-                    "value_m": float(latest_value.replace(",", ".")),
-                    "timestamp": datetime.utcnow().isoformat()
-                }
-
-        print("[Hidro] no se encontró la estación Buenos Aires")
-        return None
+        print(f"OK Hidro: {data}")
+        return data
 
     except Exception as e:
         print(f"[Hidro] error: {e}")
