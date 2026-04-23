@@ -21,6 +21,10 @@ jobs:
 
       - run: pip install pandas requests lxml
 
+- name: Test acceso SHN
+  run: |
+    curl -I https://www.hidro.gov.ar/Oceanografia/AlturasHorarias.asp || true
+
       - run: python main.py
 
       - run: |
