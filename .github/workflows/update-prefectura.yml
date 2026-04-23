@@ -13,21 +13,27 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - run: pip install pandas requests lxml
+      - name: Install dependencies
+        run: pip install pandas requests lxml
 
-- name: Test acceso SHN
-  run: |
-    curl -I https://www.hidro.gov.ar/Oceanografia/AlturasHorarias.asp || true
+      - name: Test acceso SHN
+        run: |
+          echo "Testing SHN connectivity..."
+          curl -I https://www.hidro.gov.ar/Oceanografia/AlturasHorarias.asp || true
 
-      - run: python main.py
+      - name: Run Hydroguard
+        run: python main.py
 
-      - run: |
+      - name: Commit results
+        run: |
           git config user.name "bot"
           git config user.email "bot@users.noreply.github.com"
 
