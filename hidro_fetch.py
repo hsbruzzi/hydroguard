@@ -15,7 +15,6 @@ def fetch_hidro():
 
         tree = html.fromstring(r.content)
 
-        # Buscar todas las filas de tabla
         rows = tree.xpath("//table//tr")
 
         for row in rows:
@@ -23,16 +22,23 @@ def fetch_hidro():
             if not cells:
                 continue
 
-            # Esperamos algo tipo:
-            # [Buenos Aires, 1.34, 1.34, 1.23, ...]
-            station = cells[0]
+            station = cells[0].strip().lower()
+            print(f"[DEBUG][Hidro] estación detectada: {station}")
 
-            if station.lower() == "buenos aires":
+            if "buenos aires" in station:
                 values = cells[1:]
-                valid_values = [v for v in values if v and v.upper() != "S/D"]
+                valid_values = []
+
+                for v in values:
+                    vv = v.strip()
+                    if not vv:
+                        continue
+                    if vv.upper() == "S/D":
+                        continue
+                    valid_values.append(vv)
 
                 if not valid_values:
-                    print("[Hidro] fila encontrada pero sin valores válidos")
+                    print("[Hidro] fila Buenos Aires encontrada pero sin valores válidos")
                     return None
 
                 latest_value = valid_values[0]
