@@ -21,7 +21,7 @@ def fetch_hidro():
             return None
 
         row = row[0]
-        tds = row.xpath('./td')
+        tds = row.xpath("./td")
 
         if len(tds) < 3:
             print("[Hidro] fila Buenos Aires encontrada pero con estructura inesperada")
@@ -40,7 +40,7 @@ def fetch_hidro():
                 continue
 
         if not values:
-            print("[Hidro] Buenos Aires encontrada pero sin valores numéricos válidos")
+            print("[Hidro] Buenos Aires encontrada pero sin valores válidos")
             return None
 
         latest_value = values[0]
