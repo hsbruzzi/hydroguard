@@ -1,32 +1,29 @@
-import json
-import os
+from pathlib import Path
 
-from prefectura_fetch import fetch_prefectura
-from hidro_fetch import fetch_hidro
+from fastapi import FastAPI
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
+from app.engine.semaforo import build_estado
 
-def save_data(data):
-    os.makedirs("cache", exist_ok=True)
+BASE_DIR = Path(__file__).resolve().parent
+WEB_DIR = BASE_DIR / "web"
 
-    with open("cache/prefectura_latest.json", "w") as f:
-        json.dump(data, f, indent=2)
+app = FastAPI(title="HydroGuard Avellaneda", version="0.1.0")
 
-
-def main():
-    print("Intentando Prefectura...")
-    data = fetch_prefectura()
-
-    if not data:
-        print("Prefectura falló. Intentando Hidro...")
-        data = fetch_hidro()
-
-    if not data:
-        print("ERROR: ninguna fuente disponible")
-        return
-
-    save_data(data)
-    print(f"OK final: {data}")
+app.mount("/static", StaticFiles(directory=WEB_DIR), name="static")
 
 
-if __name__ == "__main__":
-    main()
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+
+@app.get("/estado")
+def estado():
+    return build_estado()
+
+
+@app.get("/")
+def home():
+    return FileResponse(WEB_DIR / "index.html")
