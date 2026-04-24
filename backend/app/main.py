@@ -13,7 +13,6 @@ app = FastAPI(title="HydroGuard Avellaneda", version="0.1.0")
 
 app.mount("/static", StaticFiles(directory=WEB_DIR), name="static")
 
-print(f"Nivel río actualizado: {data['value_m']} m")
 
 @app.get("/health")
 def health():
