@@ -1,12 +1,14 @@
+import os
+import time
 import unicodedata
 from io import StringIO
 
 import pandas as pd
 import requests
-import os
 
 OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast"
 PREFECTURA_URL = "https://contenidosweb.prefecturanaval.gob.ar/alturas/"
+CACHE_URL_DEFAULT = "https://raw.githubusercontent.com/hsbruzzi/hydroguard/main/cache/prefectura_latest.json"
 
 LAT = -34.684
 LON = -58.342
@@ -18,12 +20,11 @@ DEFAULT_EVACUACION_M = 3.90
 def _to_float(value):
     if value is None:
         return None
-
     if isinstance(value, (int, float)):
         return float(value)
 
     txt = str(value).strip().replace(",", ".")
-    if txt in {"", "-", "--", "S/E", "S/E."}:
+    if txt in {"", "-", "--", "S/E", "S/E.", "S/D"}:
         return None
 
     try:
@@ -37,17 +38,18 @@ def _norm_text(s):
     s = unicodedata.normalize("NFKD", s)
     s = "".join(ch for ch in s if not unicodedata.combining(ch))
     s = s.lower().replace(".", " ").replace("/", " ").replace("_", " ")
-    s = " ".join(s.split())
-    return s
+    return " ".join(s.split())
 
 
 def _find_col(df, candidates):
     norm_map = {_norm_text(c): c for c in df.columns}
+
     for cand in candidates:
         cand_norm = _norm_text(cand)
         for norm_name, real_name in norm_map.items():
             if cand_norm in norm_name:
                 return real_name
+
     return None
 
 
@@ -122,6 +124,7 @@ def fetch_weather():
     ult72_clean = [(_to_float(x) or 0.0) for x in ult72]
 
     pronostico_5dias = []
+
     times = daily.get("time", []) or []
     codes = daily.get("weather_code", []) or []
     tmax = daily.get("temperature_2m_max", []) or []
@@ -154,23 +157,33 @@ def fetch_weather():
 
 
 def fetch_river_from_cache():
-    url = os.getenv("PREFECTURA_CACHE_URL")
-    if not url:
-        return None
+    url = os.getenv("PREFECTURA_CACHE_URL", CACHE_URL_DEFAULT)
 
-    r = requests.get(url, timeout=8)
+    sep = "&" if "?" in url else "?"
+    url = url + sep + "t=" + str(int(time.time()))
+
+    r = requests.get(
+        url,
+        timeout=8,
+        headers={"User-Agent": "Mozilla/5.0 HydroGuard"},
+    )
     r.raise_for_status()
+
     payload = r.json()
 
+    nivel = _to_float(payload.get("nivel_rio_m"))
+    if nivel is None:
+        nivel = _to_float(payload.get("value_m"))
+
     return {
-        "nivel_rio_m": _to_float(payload.get("nivel_rio_m")),
+        "nivel_rio_m": nivel,
         "river_variacion_m": _to_float(payload.get("variacion_m")),
         "river_estado": payload.get("estado"),
-        "river_source": "prefectura_cache_json",
-        "river_site_name": payload.get("station") or "Buenos Aires / De la Plata",
+        "river_source": payload.get("source") or "github_cache_json",
+        "river_site_name": payload.get("station") or "Buenos Aires",
         "alerta_rio_m": _to_float(payload.get("alerta_rio_m")) or DEFAULT_ALERTA_M,
         "evacuacion_rio_m": _to_float(payload.get("evacuacion_rio_m")) or DEFAULT_EVACUACION_M,
-        "thresholds_source": "prefectura_cache_json",
+        "thresholds_source": "cache_json_default_thresholds",
         "river_errors": [],
     }
 
