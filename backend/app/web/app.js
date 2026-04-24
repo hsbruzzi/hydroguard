@@ -1,5 +1,5 @@
 async function fetchEstado() {
-  const resp = await fetch("/estado", { cache: "no-store" });
+  const resp = await fetch(`/estado?t=${Date.now()}`, { cache: "no-store" });
   if (!resp.ok) {
     throw new Error(`HTTP ${resp.status}`);
   }
@@ -10,7 +10,12 @@ function fmtNumber(value, digits = 1) {
   if (value === null || value === undefined || Number.isNaN(Number(value))) {
     return "Sin dato";
   }
-  return Number(value).toFixed(digits).replace(".0", "");
+
+  const n = Number(value);
+  const fixed = n.toFixed(digits);
+
+  // Quita ceros finales sin romper decimales como 1.02
+  return fixed.replace(/\.?0+$/, "");
 }
 
 function setText(id, text) {
@@ -36,41 +41,7 @@ function renderChecklist(items) {
   });
 }
 
-function ensureForecastContainer() {
-  let section = document.getElementById("forecast-section");
-  if (section) return section;
-
-  const appShell = document.querySelector(".app-shell");
-  if (!appShell) return null;
-
-  const footer = appShell.querySelector(".footer");
-
-  section = document.createElement("section");
-  section.id = "forecast-section";
-  section.className = "panel forecast-panel";
-  section.innerHTML = `
-    <div class="panel-header">
-      <h2>Pronóstico próximos 5 días</h2>
-      <p class="forecast-subtitle">
-        Referencia útil para anticipar cuándo podría aflojar la lluvia o mejorar el tiempo.
-      </p>
-    </div>
-    <div id="forecast-grid" class="forecast-grid"></div>
-  `;
-
-  if (footer) {
-    appShell.insertBefore(section, footer);
-  } else {
-    appShell.appendChild(section);
-  }
-
-  return section;
-}
-
 function renderForecast(pronostico) {
-  const section = ensureForecastContainer();
-  if (!section) return;
-
   const grid = document.getElementById("forecast-grid");
   if (!grid) return;
 
@@ -86,25 +57,20 @@ function renderForecast(pronostico) {
     const card = document.createElement("div");
     card.className = "forecast-card";
 
-    const lluvia = dia.lluvia_mm ?? null;
-    const prob = dia.prob_lluvia_pct ?? null;
-    const tmax = dia.temp_max_c ?? null;
-    const tmin = dia.temp_min_c ?? null;
-
     card.innerHTML = `
       <div class="forecast-date">${dia.fecha || "Sin fecha"}</div>
       <div class="forecast-condition">${dia.condicion || "Sin dato"}</div>
-      <div class="forecast-row"><span>Lluvia</span><strong>${fmtNumber(lluvia, 1)} mm</strong></div>
-      <div class="forecast-row"><span>Probabilidad</span><strong>${fmtNumber(prob, 0)}%</strong></div>
-      <div class="forecast-row"><span>Máx</span><strong>${fmtNumber(tmax, 1)} °C</strong></div>
-      <div class="forecast-row"><span>Mín</span><strong>${fmtNumber(tmin, 1)} °C</strong></div>
+      <div class="forecast-row"><span>Lluvia</span><strong>${fmtNumber(dia.lluvia_mm, 1)} mm</strong></div>
+      <div class="forecast-row"><span>Probabilidad</span><strong>${fmtNumber(dia.prob_lluvia_pct, 0)}%</strong></div>
+      <div class="forecast-row"><span>Máx</span><strong>${fmtNumber(dia.temp_max_c, 1)} °C</strong></div>
+      <div class="forecast-row"><span>Mín</span><strong>${fmtNumber(dia.temp_min_c, 1)} °C</strong></div>
     `;
     grid.appendChild(card);
   });
 }
 
 function renderFuentes(meta) {
-  const fuentes = (meta && meta.fuentes) ? meta.fuentes.join(", ") : "Sin dato";
+  const fuentes = meta?.fuentes ? meta.fuentes.join(", ") : "Sin dato";
   setText("fuentes", `Fuentes: ${fuentes}`);
 }
 
@@ -149,12 +115,20 @@ function renderEstado(payload) {
 
 async function loadEstado() {
   try {
+    const btn = document.getElementById("btn-refresh");
+    if (btn) btn.textContent = "Actualizando...";
+
     const data = await fetchEstado();
     renderEstado(data);
+
+    if (btn) btn.textContent = "Actualizar";
   } catch (err) {
     console.error(err);
     setText("interpretacion", "No se pudo cargar el estado actual.");
     setText("conclusion", "Error al consultar el backend.");
+
+    const btn = document.getElementById("btn-refresh");
+    if (btn) btn.textContent = "Actualizar";
   }
 }
 
