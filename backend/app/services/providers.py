@@ -1,6 +1,7 @@
 import os
 import time
 import unicodedata
+from datetime import datetime, timedelta
 from io import StringIO
 
 import pandas as pd
@@ -91,6 +92,31 @@ def weather_code_text(code):
     return mapping.get(code, "Condición no especificada")
 
 
+def _sum_precipitation_last_hours(hourly_times, hourly_precip, current_time, hours):
+    """
+    Suma lluvia real pasada.
+    Filtra por timestamp, no por posición en el array.
+    Esto evita sumar horas futuras del pronóstico.
+    """
+    start_time = current_time - timedelta(hours=hours)
+    total = 0.0
+    max_hour = 0.0
+
+    for t, p in zip(hourly_times, hourly_precip):
+        try:
+            ts = datetime.fromisoformat(t)
+        except Exception:
+            continue
+
+        if start_time <= ts <= current_time:
+            value = _to_float(p) or 0.0
+            total += value
+            if value > max_hour:
+                max_hour = value
+
+    return round(total, 1), round(max_hour, 1)
+
+
 def fetch_weather():
     params = {
         "latitude": LAT,
@@ -110,18 +136,35 @@ def fetch_weather():
     data = r.json()
 
     current = data.get("current", {})
-    hourly = data.get("hourly", {}).get("precipitation", []) or []
+    hourly = data.get("hourly", {})
     daily = data.get("daily", {})
 
     lluvia_actual = _to_float(current.get("precipitation")) or 0.0
     viento = _to_float(current.get("wind_speed_10m")) or 0.0
     direccion = _to_float(current.get("wind_direction_10m")) or 0.0
 
-    ult24 = hourly[-24:] if len(hourly) >= 24 else hourly
-    ult72 = hourly[-72:] if len(hourly) >= 72 else hourly
+    current_time_raw = current.get("time")
+    if current_time_raw:
+        current_time = datetime.fromisoformat(current_time_raw)
+    else:
+        current_time = datetime.now()
 
-    ult24_clean = [(_to_float(x) or 0.0) for x in ult24]
-    ult72_clean = [(_to_float(x) or 0.0) for x in ult72]
+    hourly_times = hourly.get("time", []) or []
+    hourly_precip = hourly.get("precipitation", []) or []
+
+    lluvia_24h, intensidad_24h = _sum_precipitation_last_hours(
+        hourly_times,
+        hourly_precip,
+        current_time,
+        24,
+    )
+
+    lluvia_72h, _ = _sum_precipitation_last_hours(
+        hourly_times,
+        hourly_precip,
+        current_time,
+        72,
+    )
 
     pronostico_5dias = []
 
@@ -146,9 +189,9 @@ def fetch_weather():
 
     return {
         "lluvia_actual_mm": round(lluvia_actual, 1),
-        "lluvia_24h_mm": round(sum(ult24_clean), 1),
-        "intensidad_mm_h": round(max(ult24_clean, default=0.0), 1),
-        "lluvia_3dias_mm": round(sum(ult72_clean), 1),
+        "lluvia_24h_mm": lluvia_24h,
+        "intensidad_mm_h": intensidad_24h,
+        "lluvia_3dias_mm": lluvia_72h,
         "viento_kmh": round(viento, 1),
         "direccion_viento": grados_a_cardinal(direccion),
         "weather_source": "open-meteo",
