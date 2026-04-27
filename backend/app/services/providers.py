@@ -218,9 +218,15 @@ def fetch_river_from_cache():
     if nivel is None:
         nivel = _to_float(payload.get("value_m"))
 
+    previous_value = _to_float(payload.get("previous_value_m"))
+    variacion = _to_float(payload.get("variacion_m"))
+    tendencia = payload.get("tendencia")
+
     return {
         "nivel_rio_m": nivel,
-        "river_variacion_m": _to_float(payload.get("variacion_m")),
+        "river_previous_value_m": previous_value,
+        "river_variacion_m": variacion,
+        "river_tendencia": tendencia,
         "river_estado": payload.get("estado"),
         "river_source": payload.get("source") or "github_cache_json",
         "river_site_name": payload.get("station") or "Buenos Aires",
@@ -301,6 +307,7 @@ def fetch_river_prefectura_direct():
         return {
             "nivel_rio_m": nivel,
             "river_variacion_m": variacion,
+            "river_tendencia": None,
             "river_estado": estado,
             "river_source": "prefectura_direct",
             "river_site_name": "Buenos Aires / De la Plata",
