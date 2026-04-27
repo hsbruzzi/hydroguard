@@ -77,6 +77,9 @@ def build_estado():
         errors.append("river: " + str(e))
         river = {
             "nivel_rio_m": None,
+            "river_previous_value_m": None,
+            "river_variacion_m": None,
+            "river_tendencia": None,
             "river_source": "none",
             "river_site_name": None,
             "thresholds_source": "thresholds_default_buenos_aires",
@@ -90,10 +93,16 @@ def build_estado():
         "lluvia_24h_mm": weather.get("lluvia_24h_mm", 0),
         "intensidad_mm_h": weather.get("intensidad_mm_h", 0),
         "lluvia_3dias_mm": weather.get("lluvia_3dias_mm", 0),
+
         "nivel_rio_m": river.get("nivel_rio_m", None),
+        "river_previous_value_m": river.get("river_previous_value_m", None),
+        "river_variacion_m": river.get("river_variacion_m", None),
+        "river_tendencia": river.get("river_tendencia", None),
+
         "alerta_rio_m": river.get("alerta_rio_m", 3.30),
         "evacuacion_rio_m": river.get("evacuacion_rio_m", 3.90),
         "river_site_name": river.get("river_site_name", None),
+
         "viento_kmh": weather.get("viento_kmh", 0),
         "direccion_viento": weather.get("direccion_viento", "--"),
         "alerta_smn": "verde",
@@ -122,6 +131,24 @@ def build_estado():
         )
         conclusion = "VERDE: monitoreo normal, sin acción preventiva especial por ahora."
 
+    tendencia = data.get("river_tendencia")
+    variacion = data.get("river_variacion_m")
+
+    if tendencia:
+        if variacion is not None:
+            tendencia_txt = (
+                "Tendencia del río: "
+                + str(tendencia).upper()
+                + " ("
+                + ("+" if variacion > 0 else "")
+                + str(variacion)
+                + " m)"
+            )
+        else:
+            tendencia_txt = "Tendencia del río: " + str(tendencia).upper()
+    else:
+        tendencia_txt = "Tendencia del río: sin dato"
+
     checklist = [
         "Alerta oficial: " + data["alerta_smn"].upper(),
         "Lluvia actual: " + str(data["lluvia_actual_mm"]) + " mm",
@@ -133,6 +160,7 @@ def build_estado():
             if data["nivel_rio_m"] is not None
             else "Nivel del río: sin dato"
         ),
+        tendencia_txt,
         (
             "Estación usada: " + str(data["river_site_name"])
             if data["river_site_name"]
