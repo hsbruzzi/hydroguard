@@ -30,6 +30,16 @@ function getSemaforoClass(semaforo) {
   return "verde";
 }
 
+function getTendenciaTexto(tendencia) {
+  const t = String(tendencia || "").toLowerCase();
+
+  if (t === "crece") return "↑ Crece";
+  if (t === "baja") return "↓ Baja";
+  if (t === "invariable") return "→ Invariable";
+
+  return "";
+}
+
 function renderChecklist(items) {
   const ul = document.getElementById("checklist");
   if (!ul) return;
@@ -99,11 +109,18 @@ function renderEstado(payload) {
     estadoLabel.classList.add(`texto-${getSemaforoClass(semaforo)}`);
   }
 
+  const tendenciaTexto = getTendenciaTexto(datos.river_tendencia);
+
+  const nivelRioTexto =
+    datos.nivel_rio_m == null
+      ? "Sin dato"
+      : `${fmtNumber(datos.nivel_rio_m, 2)} m${tendenciaTexto ? " " + tendenciaTexto : ""}`;
+
   setText("v-lluvia-actual", `${fmtNumber(datos.lluvia_actual_mm, 1)} mm`);
   setText("v-lluvia-24h", `${fmtNumber(datos.lluvia_24h_mm, 1)} mm`);
   setText("v-intensidad", `${fmtNumber(datos.intensidad_mm_h, 1)} mm/h`);
   setText("v-lluvia-3dias", `${fmtNumber(datos.lluvia_3dias_mm, 1)} mm`);
-  setText("v-nivel-rio", datos.nivel_rio_m == null ? "Sin dato" : `${fmtNumber(datos.nivel_rio_m, 2)} m`);
+  setText("v-nivel-rio", nivelRioTexto);
   setText("v-nivel-alerta", `${fmtNumber(datos.alerta_rio_m, 1)} m`);
   setText("v-nivel-evac", `${fmtNumber(datos.evacuacion_rio_m, 1)} m`);
   setText("v-viento", `${datos.direccion_viento || "--"} ${fmtNumber(datos.viento_kmh, 1)} km/h`);
