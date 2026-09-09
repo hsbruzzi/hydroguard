@@ -1,9 +1,9 @@
 {
   "source": "hidro_html",
   "station": "Buenos Aires",
-  "value_m": 0.85,
-  "previous_value_m": 0.99,
-  "variacion_m": -0.14,
+  "value_m": 0.47,
+  "previous_value_m": 0.52,
+  "variacion_m": -0.05,
   "tendencia": "baja",
-  "timestamp": "2026-09-09T13:40:05.134272"
+  "timestamp": "2026-09-09T17:15:29.058873"
 }
