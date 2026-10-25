@@ -14,13 +14,24 @@ def calcular_semaforo(data):
     if alerta_meteo in ["naranja", "rojo"]:
         return "ROJO"
 
-    if nivel_rio is not None and evacuacion_rio is not None and nivel_rio >= evacuacion_rio:
+    if (
+        nivel_rio is not None
+        and evacuacion_rio is not None
+        and nivel_rio >= evacuacion_rio
+    ):
         return "ROJO"
 
-    if nivel_rio is not None and alerta_rio is not None and nivel_rio >= alerta_rio:
+    if (
+        nivel_rio is not None
+        and alerta_rio is not None
+        and nivel_rio >= alerta_rio
+    ):
         return "AMARILLO"
 
-    if data.get("lluvia_24h_mm", 0) > 80 or data.get("intensidad_mm_h", 0) > 40:
+    if (
+        data.get("lluvia_24h_mm", 0) > 80
+        or data.get("intensidad_mm_h", 0) > 40
+    ):
         return "ROJO"
 
     if (
@@ -105,7 +116,10 @@ def build_estado():
 
         "viento_kmh": weather.get("viento_kmh", 0),
         "direccion_viento": weather.get("direccion_viento", "--"),
-        "alerta_smn": "verde",
+
+        # No hay una consulta automática al SMN implementada.
+        "alerta_smn": "no verificada",
+
         "pronostico_5dias": weather.get("pronostico_5dias", []),
     }
 
@@ -117,11 +131,14 @@ def build_estado():
             "sobrecarga por lluvia intensa, nivel del río elevado o superación "
             "de umbrales oficiales."
         )
-        conclusion = "ROJO: evitar desplazamientos innecesarios y proteger accesos bajos."
+        conclusion = (
+            "ROJO: evitar desplazamientos innecesarios y proteger accesos bajos."
+        )
     elif semaforo == "AMARILLO":
         interpretacion = (
             "El sistema está bajo estrés moderado. Puede haber anegamientos "
-            "puntuales si se intensifica la lluvia o si el río se acerca a umbrales críticos."
+            "puntuales si se intensifica la lluvia o si el río se acerca "
+            "a umbrales críticos."
         )
         conclusion = "AMARILLO: reforzar monitoreo y revisar desagües cercanos."
     else:
@@ -129,7 +146,9 @@ def build_estado():
             "Las condiciones son estables. No hay señales de sobrecarga "
             "relevante del sistema de drenaje en este momento."
         )
-        conclusion = "VERDE: monitoreo normal, sin acción preventiva especial por ahora."
+        conclusion = (
+            "VERDE: monitoreo normal, sin acción preventiva especial por ahora."
+        )
 
     tendencia = data.get("river_tendencia")
     variacion = data.get("river_variacion_m")
@@ -150,7 +169,7 @@ def build_estado():
         tendencia_txt = "Tendencia del río: sin dato"
 
     checklist = [
-        "Alerta oficial: " + data["alerta_smn"].upper(),
+        "Alerta SMN: NO VERIFICADA. Consultar https://www.smn.gob.ar/alertas",
         "Lluvia actual: " + str(data["lluvia_actual_mm"]) + " mm",
         "Lluvia últimas 24 h: " + str(data["lluvia_24h_mm"]) + " mm",
         "Intensidad estimada: " + str(data["intensidad_mm_h"]) + " mm/h",
@@ -168,7 +187,13 @@ def build_estado():
         ),
         "Nivel de alerta: " + str(data["alerta_rio_m"]) + " m",
         "Nivel de evacuación: " + str(data["evacuacion_rio_m"]) + " m",
-        "Viento: " + str(data["direccion_viento"]) + " " + str(data["viento_kmh"]) + " km/h",
+        (
+            "Viento: "
+            + str(data["direccion_viento"])
+            + " "
+            + str(data["viento_kmh"])
+            + " km/h"
+        ),
     ]
 
     return {
