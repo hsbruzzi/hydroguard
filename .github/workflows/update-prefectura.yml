@@ -8,13 +8,22 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: hydroguard-river-update-main
+  cancel-in-progress: false
+
 jobs:
   update:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    timeout-minutes: 5
 
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -22,25 +31,122 @@ jobs:
           python-version: "3.11"
 
       - name: Install dependencies
-        run: pip install pandas requests lxml
+        run: python -m pip install pandas requests lxml
 
-      - name: Test acceso SHN
+      - name: Generate and validate river data
+        shell: bash
         run: |
-          echo "Testing SHN connectivity..."
-          curl -I https://www.hidro.gov.ar/Oceanografia/AlturasHorarias.asp || true
+          set -euo pipefail
 
-      - name: Run Hydroguard
-        run: python main.py
+          python - <<'PY'
+          import json
+          import math
+          import runpy
+          from pathlib import Path
 
-      - name: Commit results
+          path = Path("cache/prefectura_latest.json")
+
+          # El archivo del checkout no sirve como prueba
+          # de que esta ejecución obtuvo datos.
+          # La eliminación ocurre sólo en este runner.
+          path.unlink(missing_ok=True)
+
+          runpy.run_path("main.py", run_name="__main__")
+
+          if not path.is_file():
+              raise SystemExit(
+                  "ERROR: no se generó un archivo nuevo. "
+                  "No se publicarán cambios."
+              )
+
+          try:
+              payload = json.loads(
+                  path.read_text(encoding="utf-8")
+              )
+          except (OSError, ValueError) as error:
+              raise SystemExit(
+                  f"ERROR: el JSON generado no es válido: {error}"
+              )
+
+          if not isinstance(payload, dict):
+              raise SystemExit(
+                  "ERROR: se esperaba un objeto JSON."
+              )
+
+          raw_level = payload.get("nivel_rio_m")
+          if raw_level is None:
+              raw_level = payload.get("value_m")
+
+          if raw_level is None or isinstance(raw_level, bool):
+              raise SystemExit(
+                  "ERROR: falta un nivel numérico del río."
+              )
+
+          try:
+              level = float(
+                  str(raw_level).strip().replace(",", ".")
+              )
+          except (TypeError, ValueError):
+              raise SystemExit(
+                  "ERROR: el nivel del río no es numérico."
+              )
+
+          if not math.isfinite(level):
+              raise SystemExit(
+                  "ERROR: el nivel del río no es finito."
+              )
+
+          print(f"JSON generado y validado. Nivel: {level} m")
+          print("Estación:", payload.get("station", "no informada"))
+          print("Fuente:", payload.get("source", "no informada"))
+          print(
+              "Fecha de medición:",
+              payload.get("observed_at", "no informada"),
+          )
+          print(
+              "Fecha de consulta:",
+              payload.get("fetched_at")
+              or payload.get("timestamp")
+              or "no informada",
+          )
+          PY
+
+      - name: Commit and publish results
+        shell: bash
         run: |
+          set -euo pipefail
+
           git config user.name "bot"
           git config user.email "bot@users.noreply.github.com"
 
-          if [ -f cache/prefectura_latest.json ]; then
-            git add cache/prefectura_latest.json
-            git commit -m "update river" || echo "no changes"
-            git push
-          else
-            echo "No data file generated, skipping commit"
+          git add -- cache/prefectura_latest.json
+
+          if git diff --cached --quiet; then
+            echo "Resultado válido, sin cambios para publicar."
+            exit 0
           fi
+
+          git commit -m "update river"
+
+          for attempt in 1 2 3; do
+            echo "Intento de publicación ${attempt}/3"
+
+            git fetch origin main
+
+            if ! git rebase origin/main; then
+              git rebase --abort
+              echo "::error::Conflicto al sincronizar. No se sobrescribieron los cambios remotos."
+              exit 1
+            fi
+
+            if git push origin HEAD:main; then
+              echo "Datos publicados correctamente."
+              exit 0
+            fi
+
+            echo "No se pudo publicar. Se volverá a sincronizar."
+            sleep 2
+          done
+
+          echo "::error::No se pudo publicar después de tres intentos."
+          exit 1
