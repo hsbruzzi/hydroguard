@@ -1,6 +1,58 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from app.services.providers import fetch_weather, fetch_river
+
+
+ARGENTINA = timezone(timedelta(hours=-3))
+
+
+def fecha_argentina(value):
+    if not isinstance(value, str) or not value.strip():
+        return "sin dato"
+
+    try:
+        fecha = datetime.fromisoformat(
+            value.strip().replace("Z", "+00:00")
+        )
+        if fecha.tzinfo is None or fecha.utcoffset() is None:
+            return "sin zona horaria verificable"
+
+        return fecha.astimezone(ARGENTINA).strftime(
+            "%d/%m/%Y %H:%M:%S (Argentina)"
+        )
+    except ValueError:
+        return "fecha no válida"
+
+
+def antiguedad_minutos(value):
+    if not isinstance(value, str) or not value.strip():
+        return None
+
+    try:
+        fecha = datetime.fromisoformat(
+            value.strip().replace("Z", "+00:00")
+        )
+        if fecha.tzinfo is None or fecha.utcoffset() is None:
+            return None
+
+        minutos = (
+            datetime.now(timezone.utc) - fecha
+        ).total_seconds() / 60
+
+        return round(minutos, 1) if minutos >= 0 else None
+    except ValueError:
+        return None
+
+
+def texto_antiguedad(minutos):
+    if minutos is None:
+        return "desconocida"
+
+    if minutos < 60:
+        return f"{minutos:.0f} minutos"
+
+    horas, resto = divmod(int(minutos), 60)
+    return f"{horas} h {resto:02d} min"
 
 
 def calcular_semaforo(data):
@@ -57,7 +109,6 @@ def build_estado():
     errors = []
     fuentes = []
 
-    weather = {}
     try:
         weather = fetch_weather()
         if weather.get("weather_source"):
@@ -75,15 +126,17 @@ def build_estado():
             "pronostico_5dias": [],
         }
 
-    river = {}
     try:
         river = fetch_river()
-        if river.get("river_source") and river.get("river_source") != "none":
+        if river.get("river_source") and river["river_source"] != "none":
             fuentes.append(river["river_source"])
+
         if river.get("thresholds_source"):
             fuentes.append(river["thresholds_source"])
+
         if river.get("river_errors"):
             errors.extend(river["river_errors"])
+
     except Exception as e:
         errors.append("river: " + str(e))
         river = {
@@ -96,7 +149,6 @@ def build_estado():
             "thresholds_source": "thresholds_default_buenos_aires",
             "alerta_rio_m": 3.30,
             "evacuacion_rio_m": 3.90,
-            "river_errors": [str(e)],
         }
 
     data = {
@@ -105,23 +157,47 @@ def build_estado():
         "intensidad_mm_h": weather.get("intensidad_mm_h", 0),
         "lluvia_3dias_mm": weather.get("lluvia_3dias_mm", 0),
 
-        "nivel_rio_m": river.get("nivel_rio_m", None),
-        "river_previous_value_m": river.get("river_previous_value_m", None),
-        "river_variacion_m": river.get("river_variacion_m", None),
-        "river_tendencia": river.get("river_tendencia", None),
+        "nivel_rio_m": river.get("nivel_rio_m"),
+        "river_previous_value_m": river.get("river_previous_value_m"),
+        "river_variacion_m": river.get("river_variacion_m"),
+        "river_tendencia": river.get("river_tendencia"),
+        "river_site_name": river.get("river_site_name"),
+
+        "river_observed_at": river.get("river_observed_at"),
+        "river_previous_observed_at": river.get(
+            "river_previous_observed_at"
+        ),
+        "river_fetched_at": river.get("river_fetched_at"),
+        "river_interval_hours": river.get("river_interval_hours"),
+        "river_source": river.get("river_source"),
+        "river_source_name": river.get("river_source_name"),
+        "river_source_url": river.get("river_source_url"),
+        "river_reference": river.get("river_reference"),
+        "river_unit": river.get("river_unit") or "m",
 
         "alerta_rio_m": river.get("alerta_rio_m", 3.30),
         "evacuacion_rio_m": river.get("evacuacion_rio_m", 3.90),
-        "river_site_name": river.get("river_site_name", None),
-
         "viento_kmh": weather.get("viento_kmh", 0),
         "direccion_viento": weather.get("direccion_viento", "--"),
 
-        # No hay una consulta automática al SMN implementada.
         "alerta_smn": "no verificada",
-
         "pronostico_5dias": weather.get("pronostico_5dias", []),
     }
+
+    # La antigüedad se calcula desde la medición, no desde la consulta.
+    edad = antiguedad_minutos(data["river_observed_at"])
+    data["river_age_minutes"] = edad
+
+    if data["nivel_rio_m"] is None:
+        calidad = "sin dato"
+    elif edad is None:
+        calidad = "antigüedad no verificable"
+    elif edad > 180:
+        calidad = "dato atrasado"
+    else:
+        calidad = "dentro del margen operativo de 3 horas"
+
+    data["river_data_status"] = calidad
 
     semaforo = calcular_semaforo(data)
 
@@ -150,21 +226,18 @@ def build_estado():
             "VERDE: monitoreo normal, sin acción preventiva especial por ahora."
         )
 
-    tendencia = data.get("river_tendencia")
-    variacion = data.get("river_variacion_m")
+    tendencia = data["river_tendencia"]
+    variacion = data["river_variacion_m"]
+    intervalo = data["river_interval_hours"]
 
     if tendencia:
+        tendencia_txt = "Tendencia del río: " + str(tendencia).upper()
         if variacion is not None:
-            tendencia_txt = (
-                "Tendencia del río: "
-                + str(tendencia).upper()
-                + " ("
-                + ("+" if variacion > 0 else "")
-                + str(variacion)
-                + " m)"
-            )
+            tendencia_txt += f" ({variacion:+.2f} m)"
+        if intervalo is not None:
+            tendencia_txt += f" en {intervalo:g} horas"
         else:
-            tendencia_txt = "Tendencia del río: " + str(tendencia).upper()
+            tendencia_txt += "; intervalo no verificado"
     else:
         tendencia_txt = "Tendencia del río: sin dato"
 
@@ -179,14 +252,35 @@ def build_estado():
             if data["nivel_rio_m"] is not None
             else "Nivel del río: sin dato"
         ),
-        tendencia_txt,
-        (
-            "Estación usada: " + str(data["river_site_name"])
-            if data["river_site_name"]
-            else "Estación usada: sin dato"
+        "Estación del río: " + str(data["river_site_name"] or "sin dato"),
+        "Fuente del río: " + str(
+            data["river_source_name"]
+            or data["river_source"]
+            or "sin dato"
         ),
-        "Nivel de alerta: " + str(data["alerta_rio_m"]) + " m",
-        "Nivel de evacuación: " + str(data["evacuacion_rio_m"]) + " m",
+        "Enlace de la fuente: " + str(
+            data["river_source_url"] or "sin dato"
+        ),
+        "Referencia del nivel: " + str(
+            data["river_reference"] or "no informada"
+        ),
+        "Medición del río: " + fecha_argentina(data["river_observed_at"]),
+        "Antigüedad de la medición: " + texto_antiguedad(edad),
+        "Estado del dato del río: " + calidad,
+        (
+            "Margen de antigüedad: 3 horas, criterio operativo propio "
+            "de HydroGuard; no es un umbral oficial de emergencia"
+        ),
+        "Consulta de la fuente: " + fecha_argentina(
+            data["river_fetched_at"]
+        ),
+        "Medición anterior: " + fecha_argentina(
+            data["river_previous_observed_at"]
+        ),
+        tendencia_txt,
+        "Nivel de alerta configurado: " + str(data["alerta_rio_m"]) + " m",
+        "Nivel de evacuación configurado: "
+        + str(data["evacuacion_rio_m"]) + " m",
         (
             "Viento: "
             + str(data["direccion_viento"])
