@@ -1,3 +1,4 @@
+import math
 import os
 import time
 import unicodedata
@@ -23,19 +24,22 @@ DEFAULT_EVACUACION_M = 3.90
 
 
 def _to_float(value):
-    if value is None:
+    if value is None or isinstance(value, bool):
         return None
-    if isinstance(value, (int, float)):
-        return float(value)
-
-    txt = str(value).strip().replace(",", ".")
-    if txt in {"", "-", "--", "S/E", "S/E.", "S/D"}:
-        return None
-
     try:
-        return float(txt)
-    except ValueError:
+        number = float(str(value).strip().replace(",", "."))
+        return number if math.isfinite(number) else None
+    except (TypeError, ValueError):
         return None
+
+
+def _nonnegative(value):
+    number = _to_float(value)
+    return number if number is not None and number >= 0 else None
+
+
+def _rounded(value):
+    return round(value, 1) if value is not None else None
 
 
 def _norm_text(s):
@@ -149,26 +153,67 @@ def weather_code_text(code):
     return mapping.get(code, "Condición no especificada")
 
 
+def _provider_time(value, offset_seconds):
+    """Fecha del modelo; no es una observación de una estación."""
+    if not isinstance(value, str) or not value.strip():
+        return None
+
+    try:
+        dt = datetime.fromisoformat(
+            value.strip().replace("Z", "+00:00")
+        )
+        if dt.tzinfo is None or dt.utcoffset() is None:
+            offset = _to_float(offset_seconds)
+            if offset is None or abs(offset) >= 86400:
+                return None
+            dt = dt.replace(
+                tzinfo=timezone(timedelta(seconds=offset))
+            )
+        return dt
+    except (TypeError, ValueError, OverflowError):
+        return None
+
+
 def _sum_precipitation_last_hours(
     hourly_times, hourly_precip, current_time, hours
 ):
-    """Suma valores del proveedor correspondientes a horas pasadas."""
-    start_time = current_time - timedelta(hours=hours)
-    total = 0.0
-    max_hour = 0.0
+    """Suma horas completas del modelo; una serie incompleta no vale cero."""
+    if current_time is None:
+        return None, None
 
-    for t, p in zip(hourly_times, hourly_precip):
-        try:
-            ts = datetime.fromisoformat(t)
-        except Exception:
+    end = current_time.replace(
+        minute=0, second=0, microsecond=0
+    )
+    expected = {
+        end - timedelta(hours=i)
+        for i in range(hours)
+    }
+    samples = {}
+    offset = current_time.utcoffset().total_seconds()
+
+    for i, raw_time in enumerate(hourly_times):
+        dt = _provider_time(raw_time, offset)
+        if dt not in expected:
             continue
 
-        if start_time <= ts <= current_time:
-            value = _to_float(p) or 0.0
-            total += value
-            max_hour = max(max_hour, value)
+        if dt in samples:
+            return None, None
 
-    return round(total, 1), round(max_hour, 1)
+        value = (
+            _nonnegative(hourly_precip[i])
+            if i < len(hourly_precip)
+            else None
+        )
+        if value is None:
+            return None, None
+
+        samples[dt] = value
+
+    if set(samples) != expected:
+        return None, None
+
+    values = list(samples.values())
+    return round(sum(values), 1), round(max(values), 1)
 
 
 def fetch_weather():
@@ -182,33 +227,43 @@ def fetch_weather():
             "precipitation_sum,precipitation_probability_max"
         ),
         "forecast_days": 5,
-        "past_hours": 72,
+        "past_hours": 73,
         "timezone": "America/Argentina/Buenos_Aires",
         "wind_speed_unit": "kmh",
         "precipitation_unit": "mm",
     }
 
-    r = requests.get(OPEN_METEO_URL, params=params, timeout=10)
+    r = requests.get(
+        OPEN_METEO_URL, params=params, timeout=10
+    )
     r.raise_for_status()
     data = r.json()
 
-    current = data.get("current", {})
-    hourly = data.get("hourly", {})
-    daily = data.get("daily", {})
+    current = data.get("current") or {}
+    hourly = data.get("hourly") or {}
+    daily = data.get("daily") or {}
 
-    lluvia_actual = _to_float(current.get("precipitation")) or 0.0
-    viento = _to_float(current.get("wind_speed_10m")) or 0.0
-    direccion = _to_float(current.get("wind_direction_10m")) or 0.0
-
-    current_time_raw = current.get("time")
-    current_time = (
-        datetime.fromisoformat(current_time_raw)
-        if current_time_raw
-        else datetime.now()
+    current_time = _provider_time(
+        current.get("time"),
+        data.get("utc_offset_seconds"),
     )
 
-    hourly_times = hourly.get("time", []) or []
-    hourly_precip = hourly.get("precipitation", []) or []
+    # Nunca reemplazar una fecha ausente con la hora de consulta.
+    lluvia_actual = _nonnegative(
+        current.get("precipitation")
+    )
+    viento = _nonnegative(
+        current.get("wind_speed_10m")
+    )
+    direccion = _to_float(
+        current.get("wind_direction_10m")
+    )
+
+    if direccion is not None and not 0 <= direccion <= 360:
+        direccion = None
+
+    hourly_times = hourly.get("time") or []
+    hourly_precip = hourly.get("precipitation") or []
 
     lluvia_24h, intensidad_24h = _sum_precipitation_last_hours(
         hourly_times, hourly_precip, current_time, 24
@@ -217,34 +272,78 @@ def fetch_weather():
         hourly_times, hourly_precip, current_time, 72
     )
 
-    times = daily.get("time", []) or []
-    codes = daily.get("weather_code", []) or []
-    tmax = daily.get("temperature_2m_max", []) or []
-    tmin = daily.get("temperature_2m_min", []) or []
-    psum = daily.get("precipitation_sum", []) or []
-    pprob = daily.get("precipitation_probability_max", []) or []
+    def daily_value(key, index):
+        values = daily.get(key) or []
+        return values[index] if index < len(values) else None
 
     pronostico_5dias = []
-    for i in range(min(len(times), 5)):
-        code = codes[i] if i < len(codes) else None
+
+    for i, day in enumerate((daily.get("time") or [])[:5]):
+        code = _to_float(
+            daily_value("weather_code", i)
+        )
+        code = (
+            int(code)
+            if code is not None and code.is_integer()
+            else None
+        )
+
+        probability = _to_float(
+            daily_value("precipitation_probability_max", i)
+        )
+        if probability is not None and not 0 <= probability <= 100:
+            probability = None
+
         pronostico_5dias.append({
-            "fecha": times[i],
+            "fecha": day,
             "weather_code": code,
             "condicion": weather_code_text(code),
-            "temp_max_c": tmax[i] if i < len(tmax) else None,
-            "temp_min_c": tmin[i] if i < len(tmin) else None,
-            "lluvia_mm": psum[i] if i < len(psum) else None,
-            "prob_lluvia_pct": pprob[i] if i < len(pprob) else None,
+            "temp_max_c": _to_float(
+                daily_value("temperature_2m_max", i)
+            ),
+            "temp_min_c": _to_float(
+                daily_value("temperature_2m_min", i)
+            ),
+            "lluvia_mm": _nonnegative(
+                daily_value("precipitation_sum", i)
+            ),
+            "prob_lluvia_pct": probability,
         })
 
     return {
-        "lluvia_actual_mm": round(lluvia_actual, 1),
+        "lluvia_actual_mm": _rounded(lluvia_actual),
         "lluvia_24h_mm": lluvia_24h,
         "intensidad_mm_h": intensidad_24h,
         "lluvia_3dias_mm": lluvia_72h,
-        "viento_kmh": round(viento, 1),
-        "direccion_viento": grados_a_cardinal(direccion),
-        "weather_source": "open-meteo",
+        "viento_kmh": _rounded(viento),
+        "direccion_viento": (
+            grados_a_cardinal(direccion)
+            if direccion is not None
+            else None
+        ),
+        "weather_source": "Open-Meteo (modelo meteorológico)",
+
+        # Nombre conservado por compatibilidad: es fecha del proveedor,
+        # no la medición de un pluviómetro o anemómetro local.
+        "weather_observed_at": (
+            current_time.isoformat()
+            if current_time is not None
+            else None
+        ),
+        "weather_fetched_at": datetime.now(
+            timezone.utc
+        ).isoformat(),
+        "weather_data_kind": "modelo meteorológico",
+        "weather_hourly_end_at": (
+            current_time.replace(
+                minute=0, second=0, microsecond=0
+            ).isoformat()
+            if current_time is not None
+            else None
+        ),
+        "weather_current_interval_seconds": _nonnegative(
+            current.get("interval")
+        ),
         "pronostico_5dias": pronostico_5dias,
     }
 
@@ -271,13 +370,20 @@ def fetch_river_from_cache():
         "river_previous_value_m": _to_float(
             payload.get("previous_value_m")
         ),
-        "river_variacion_m": _to_float(payload.get("variacion_m")),
+        "river_variacion_m": _to_float(
+            payload.get("variacion_m")
+        ),
         "river_tendencia": payload.get("tendencia"),
         "river_estado": payload.get("estado"),
-        "river_source": payload.get("source") or "github_cache_json",
-        "river_site_name": payload.get("station") or "Buenos Aires",
+        "river_source": (
+            payload.get("source") or "github_cache_json"
+        ),
+        "river_site_name": (
+            payload.get("station") or "Buenos Aires"
+        ),
         "alerta_rio_m": (
-            _to_float(payload.get("alerta_rio_m")) or DEFAULT_ALERTA_M
+            _to_float(payload.get("alerta_rio_m"))
+            or DEFAULT_ALERTA_M
         ),
         "evacuacion_rio_m": (
             _to_float(payload.get("evacuacion_rio_m"))
@@ -286,6 +392,7 @@ def fetch_river_from_cache():
         "thresholds_source": "cache_json_default_thresholds",
         "river_errors": [],
     }
+
     resultado.update(_metadatos_rio(payload))
     return resultado
 
@@ -308,21 +415,36 @@ def fetch_river_prefectura_direct():
 
         for tabla in tablas:
             df = tabla.copy()
-            df.columns = [" ".join(str(c).split()) for c in df.columns]
+            df.columns = [
+                " ".join(str(c).split())
+                for c in df.columns
+            ]
 
             cols = {
                 "puerto": _find_col(df, ["Puerto"]),
                 "rio": _find_col(df, ["Rio", "Río"]),
                 "ult": _find_col(
-                    df, ["Ult registro", "Ult. registro", "Ultimo registro"]
+                    df,
+                    [
+                        "Ult registro",
+                        "Ult. registro",
+                        "Ultimo registro",
+                    ],
                 ),
                 "alerta": _find_col(df, ["Alerta"]),
-                "evac": _find_col(df, ["Evacuacion", "Evacuación"]),
+                "evac": _find_col(
+                    df, ["Evacuacion", "Evacuación"]
+                ),
                 "estado": _find_col(df, ["Estado"]),
-                "variacion": _find_col(df, ["Variacion", "Variación"]),
+                "variacion": _find_col(
+                    df, ["Variacion", "Variación"]
+                ),
             }
 
-            if all(cols[k] is not None for k in ["puerto", "rio", "ult"]):
+            if all(
+                cols[k] is not None
+                for k in ["puerto", "rio", "ult"]
+            ):
                 selected_df = df
                 selected_cols = cols
                 break
@@ -331,10 +453,15 @@ def fetch_river_prefectura_direct():
             raise RuntimeError("No encontré tabla válida")
 
         df = selected_df
+
         fila = df[
-            df[selected_cols["puerto"]].astype(str).str.upper()
+            df[selected_cols["puerto"]]
+            .astype(str)
+            .str.upper()
             .str.contains("BUENOS AIRES", na=False)
-            & df[selected_cols["rio"]].astype(str).str.upper()
+            & df[selected_cols["rio"]]
+            .astype(str)
+            .str.upper()
             .str.contains("PLATA", na=False)
         ]
 
@@ -347,7 +474,11 @@ def fetch_river_prefectura_direct():
 
         def valor(clave):
             columna = selected_cols[clave]
-            return row.get(columna) if columna is not None else None
+            return (
+                row.get(columna)
+                if columna is not None
+                else None
+            )
 
         alerta = _to_float(valor("alerta"))
         evacuacion = _to_float(valor("evac"))
@@ -355,15 +486,21 @@ def fetch_river_prefectura_direct():
 
         resultado = {
             "nivel_rio_m": _to_float(valor("ult")),
-            "river_variacion_m": _to_float(valor("variacion")),
+            "river_variacion_m": _to_float(
+                valor("variacion")
+            ),
             "river_tendencia": None,
             "river_estado": (
-                str(estado).strip().upper() if estado is not None else None
+                str(estado).strip().upper()
+                if estado is not None
+                else None
             ),
             "river_source": "prefectura_direct",
             "river_site_name": "Buenos Aires / De la Plata",
             "alerta_rio_m": (
-                alerta if alerta is not None else DEFAULT_ALERTA_M
+                alerta
+                if alerta is not None
+                else DEFAULT_ALERTA_M
             ),
             "evacuacion_rio_m": (
                 evacuacion
@@ -373,12 +510,16 @@ def fetch_river_prefectura_direct():
             "thresholds_source": "prefectura_direct",
             "river_errors": [],
         }
+
         resultado.update(_metadatos_rio({
             "source_name": "Prefectura Naval Argentina",
             "source_url": PREFECTURA_URL,
-            "fetched_at": datetime.now(timezone.utc).isoformat(),
+            "fetched_at": datetime.now(
+                timezone.utc
+            ).isoformat(),
             "unit": "m",
         }))
+
         return resultado
 
     except Exception as e:
@@ -389,7 +530,9 @@ def fetch_river_prefectura_direct():
             "alerta_rio_m": DEFAULT_ALERTA_M,
             "evacuacion_rio_m": DEFAULT_EVACUACION_M,
             "thresholds_source": "thresholds_default_buenos_aires",
-            "river_errors": ["Prefectura directa: " + str(e)],
+            "river_errors": [
+                "Prefectura directa: " + str(e)
+            ],
             **_metadatos_rio({}),
         }
 
@@ -399,6 +542,7 @@ def fetch_river():
         cached = fetch_river_from_cache()
         if cached is not None:
             return cached
+
     except Exception as e:
         return {
             "nivel_rio_m": None,
