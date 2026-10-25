@@ -1,21 +1,33 @@
 async function fetchEstado() {
-  const resp = await fetch(`/estado?t=${Date.now()}`, { cache: "no-store" });
+  const resp = await fetch(`/estado?t=${Date.now()}`, {
+    cache: "no-store"
+  });
+
   if (!resp.ok) {
     throw new Error(`HTTP ${resp.status}`);
   }
+
   return await resp.json();
 }
 
 function fmtNumber(value, digits = 1) {
-  if (value === null || value === undefined || Number.isNaN(Number(value))) {
+  if (
+    value === null ||
+    value === undefined ||
+    value === "" ||
+    !Number.isFinite(Number(value))
+  ) {
     return "Sin dato";
   }
 
-  const n = Number(value);
-  const fixed = n.toFixed(digits);
+  return Number(value)
+    .toFixed(digits)
+    .replace(/(\.\d*?[1-9])0+$|\.0+$/, "$1");
+}
 
-  // Quita ceros finales sin romper decimales como 1.02
-  return fixed.replace(/\.?0+$/, "");
+function medida(value, unidad, digits = 1) {
+  const texto = fmtNumber(value, digits);
+  return texto === "Sin dato" ? texto : `${texto} ${unidad}`;
 }
 
 function setText(id, text) {
@@ -23,19 +35,32 @@ function setText(id, text) {
   if (el) el.textContent = text;
 }
 
+function normalizarSemaforo(value) {
+  const estado = String(value || "").toUpperCase();
+
+  if (["VERDE", "AMARILLO", "ROJO"].includes(estado)) {
+    return estado;
+  }
+
+  return "INFORMACIÓN INSUFICIENTE";
+}
+
 function getSemaforoClass(semaforo) {
-  const s = String(semaforo || "").toUpperCase();
-  if (s === "ROJO") return "rojo";
-  if (s === "AMARILLO") return "amarillo";
-  return "verde";
+  const estado = normalizarSemaforo(semaforo);
+
+  if (estado === "ROJO") return "rojo";
+  if (estado === "AMARILLO") return "amarillo";
+  if (estado === "VERDE") return "verde";
+
+  return "insuficiente";
 }
 
 function getTendenciaTexto(tendencia) {
-  const t = String(tendencia || "").toLowerCase();
+  const valor = String(tendencia || "").toLowerCase();
 
-  if (t === "crece") return "↑ Crece";
-  if (t === "baja") return "↓ Baja";
-  if (t === "invariable") return "→ Invariable";
+  if (valor === "crece") return "↑ Crece";
+  if (valor === "baja") return "↓ Baja";
+  if (valor === "invariable") return "→ Invariable";
 
   return "";
 }
@@ -43,10 +68,14 @@ function getTendenciaTexto(tendencia) {
 function renderChecklist(items) {
   const ul = document.getElementById("checklist");
   if (!ul) return;
-  ul.innerHTML = "";
-  (items || []).forEach((item) => {
+
+  ul.replaceChildren();
+
+  const lista = Array.isArray(items) ? items : [];
+
+  lista.forEach((item) => {
     const li = document.createElement("li");
-    li.textContent = item;
+    li.textContent = String(item);
     ul.appendChild(li);
   });
 }
@@ -55,11 +84,15 @@ function renderForecast(pronostico) {
   const grid = document.getElementById("forecast-grid");
   if (!grid) return;
 
-  grid.innerHTML = "";
+  grid.replaceChildren();
 
-  const items = pronostico || [];
+  const items = Array.isArray(pronostico) ? pronostico : [];
+
   if (!items.length) {
-    grid.innerHTML = `<div class="forecast-empty">Sin pronóstico disponible.</div>`;
+    const aviso = document.createElement("div");
+    aviso.className = "forecast-empty";
+    aviso.textContent = "Sin pronóstico disponible.";
+    grid.appendChild(aviso);
     return;
   }
 
@@ -67,92 +100,176 @@ function renderForecast(pronostico) {
     const card = document.createElement("div");
     card.className = "forecast-card";
 
-    card.innerHTML = `
-      <div class="forecast-date">${dia.fecha || "Sin fecha"}</div>
-      <div class="forecast-condition">${dia.condicion || "Sin dato"}</div>
-      <div class="forecast-row"><span>Lluvia</span><strong>${fmtNumber(dia.lluvia_mm, 1)} mm</strong></div>
-      <div class="forecast-row"><span>Probabilidad</span><strong>${fmtNumber(dia.prob_lluvia_pct, 0)}%</strong></div>
-      <div class="forecast-row"><span>Máx</span><strong>${fmtNumber(dia.temp_max_c, 1)} °C</strong></div>
-      <div class="forecast-row"><span>Mín</span><strong>${fmtNumber(dia.temp_min_c, 1)} °C</strong></div>
-    `;
+    const fecha = document.createElement("div");
+    fecha.className = "forecast-date";
+    fecha.textContent = dia.fecha || "Sin fecha";
+
+    const condicion = document.createElement("div");
+    condicion.className = "forecast-condition";
+    condicion.textContent = dia.condicion || "Sin dato";
+
+    card.append(fecha, condicion);
+
+    const filas = [
+      ["Lluvia", medida(dia.lluvia_mm, "mm")],
+      ["Probabilidad", medida(dia.prob_lluvia_pct, "%", 0)],
+      ["Máx", medida(dia.temp_max_c, "°C")],
+      ["Mín", medida(dia.temp_min_c, "°C")]
+    ];
+
+    filas.forEach(([nombre, valor]) => {
+      const fila = document.createElement("div");
+      fila.className = "forecast-row";
+
+      const etiqueta = document.createElement("span");
+      etiqueta.textContent = nombre;
+
+      const dato = document.createElement("strong");
+      dato.textContent = valor;
+
+      fila.append(etiqueta, dato);
+      card.appendChild(fila);
+    });
+
     grid.appendChild(card);
   });
 }
 
 function renderFuentes(meta) {
-  const fuentes = meta?.fuentes ? meta.fuentes.join(", ") : "Sin dato";
-  setText("fuentes", `Fuentes: ${fuentes}`);
+  const fuentes = Array.isArray(meta?.fuentes)
+    ? meta.fuentes.filter(Boolean).join(", ")
+    : "";
+
+  setText("fuentes", `Fuentes: ${fuentes || "Sin dato"}`);
+}
+
+function fechaConsulta(value) {
+  if (!value) return "Sin dato";
+
+  const fecha = new Date(value);
+  if (Number.isNaN(fecha.getTime())) return "Sin dato";
+
+  return fecha.toLocaleString("es-AR", {
+    timeZone: "America/Argentina/Buenos_Aires"
+  }) + " (Argentina)";
 }
 
 function renderEstado(payload) {
-  const semaforo = payload.semaforo || "VERDE";
+  const semaforo = normalizarSemaforo(payload.semaforo);
+  const clase = getSemaforoClass(semaforo);
+  const insuficiente = clase === "insuficiente";
   const datos = payload.datos || {};
   const meta = payload.meta || {};
 
   setText("semaforo-label", semaforo);
   setText(
     "updated-at",
-    `Actualizado: ${new Date(meta.updated_at || Date.now()).toLocaleString("es-AR")}`
+    `Consulta del tablero, no medición: ${fechaConsulta(meta.updated_at)}`
   );
-  setText("interpretacion", payload.interpretacion || "-");
-  setText("conclusion", payload.conclusion || "-");
+  setText("interpretacion", payload.interpretacion || "Sin información.");
+  setText("conclusion", payload.conclusion || "Evaluación no disponible.");
 
   const statusCard = document.querySelector(".status-card");
+
   if (statusCard) {
-    statusCard.classList.remove("verde", "amarillo", "rojo");
-    statusCard.classList.add(getSemaforoClass(semaforo));
+    statusCard.classList.remove(
+      "verde", "amarillo", "rojo", "insuficiente"
+    );
+    statusCard.classList.add(clase);
+
+    // Permite mostrar el estado neutral sin modificar styles.css.
+    statusCard.style.backgroundColor = insuficiente ? "#26313d" : "";
+    statusCard.style.borderColor = insuficiente ? "#94a3b8" : "";
+    statusCard.style.backgroundImage = insuficiente ? "none" : "";
   }
 
   const estadoLabel = document.getElementById("semaforo-label");
+
   if (estadoLabel) {
-    estadoLabel.classList.remove("texto-verde", "texto-amarillo", "texto-rojo");
-    estadoLabel.classList.add(`texto-${getSemaforoClass(semaforo)}`);
+    estadoLabel.classList.remove(
+      "texto-verde",
+      "texto-amarillo",
+      "texto-rojo",
+      "texto-insuficiente"
+    );
+    estadoLabel.classList.add(`texto-${clase}`);
+    estadoLabel.style.color = insuficiente ? "#e2e8f0" : "";
   }
 
-  const tendenciaTexto = getTendenciaTexto(datos.river_tendencia);
+  const tendencia = getTendenciaTexto(datos.river_tendencia);
+  let nivelRio = medida(datos.nivel_rio_m, "m", 2);
 
-  const nivelRioTexto =
-    datos.nivel_rio_m == null
-      ? "Sin dato"
-      : `${fmtNumber(datos.nivel_rio_m, 2)} m${tendenciaTexto ? " " + tendenciaTexto : ""}`;
+  if (nivelRio !== "Sin dato" && tendencia) {
+    nivelRio += ` ${tendencia}`;
+  }
 
-  setText("v-lluvia-actual", `${fmtNumber(datos.lluvia_actual_mm, 1)} mm`);
-  setText("v-lluvia-24h", `${fmtNumber(datos.lluvia_24h_mm, 1)} mm`);
-  setText("v-intensidad", `${fmtNumber(datos.intensidad_mm_h, 1)} mm/h`);
-  setText("v-lluvia-3dias", `${fmtNumber(datos.lluvia_3dias_mm, 1)} mm`);
-  setText("v-nivel-rio", nivelRioTexto);
-  setText("v-nivel-alerta", `${fmtNumber(datos.alerta_rio_m, 1)} m`);
-  setText("v-nivel-evac", `${fmtNumber(datos.evacuacion_rio_m, 1)} m`);
-  setText("v-viento", `${datos.direccion_viento || "--"} ${fmtNumber(datos.viento_kmh, 1)} km/h`);
+  if (
+    nivelRio !== "Sin dato" &&
+    datos.river_data_status === "dato atrasado"
+  ) {
+    nivelRio += " — dato atrasado";
+  } else if (
+    nivelRio !== "Sin dato" &&
+    datos.river_data_status === "antigüedad no verificable"
+  ) {
+    nivelRio += " — antigüedad desconocida";
+  }
 
-  renderChecklist(payload.checklist || []);
+  setText("v-lluvia-actual", medida(datos.lluvia_actual_mm, "mm"));
+  setText("v-lluvia-24h", medida(datos.lluvia_24h_mm, "mm"));
+  setText("v-intensidad", medida(datos.intensidad_mm_h, "mm/h"));
+  setText("v-lluvia-3dias", medida(datos.lluvia_3dias_mm, "mm"));
+  setText("v-nivel-rio", nivelRio);
+  setText("v-nivel-alerta", medida(datos.alerta_rio_m, "m"));
+  setText("v-nivel-evac", medida(datos.evacuacion_rio_m, "m"));
+
+  const viento = medida(datos.viento_kmh, "km/h");
+  setText(
+    "v-viento",
+    viento === "Sin dato"
+      ? viento
+      : `${datos.direccion_viento || "Dirección sin dato"} ${viento}`
+  );
+
+  renderChecklist(payload.checklist);
   renderFuentes(meta);
-  renderForecast(datos.pronostico_5dias || []);
+  renderForecast(datos.pronostico_5dias);
 }
 
 async function loadEstado() {
-  try {
-    const btn = document.getElementById("btn-refresh");
-    if (btn) btn.textContent = "Actualizando...";
+  const btn = document.getElementById("btn-refresh");
+  if (btn) btn.textContent = "Actualizando...";
 
+  try {
     const data = await fetchEstado();
     renderEstado(data);
-
-    if (btn) btn.textContent = "Actualizar";
   } catch (err) {
     console.error(err);
-    setText("interpretacion", "No se pudo cargar el estado actual.");
-    setText("conclusion", "Error al consultar el backend.");
 
-    const btn = document.getElementById("btn-refresh");
+    // Elimina los valores y el color de la consulta anterior.
+    renderEstado({
+      semaforo: "INFORMACIÓN INSUFICIENTE",
+      interpretacion: "No se pudo obtener el estado actual.",
+      conclusion: (
+        "La falta de datos no permite confirmar condiciones seguras. " +
+        "Consultá las fuentes oficiales."
+      ),
+      datos: {},
+      checklist: [
+        "Falló la consulta del tablero.",
+        "Los valores anteriores no se muestran como datos actuales.",
+        "Alertas oficiales: https://www.smn.gob.ar/alertas"
+      ],
+      meta: {}
+    });
+  } finally {
     if (btn) btn.textContent = "Actualizar";
   }
 }
 
 document.addEventListener("DOMContentLoaded", () => {
   const btn = document.getElementById("btn-refresh");
-  if (btn) {
-    btn.addEventListener("click", loadEstado);
-  }
+  if (btn) btn.addEventListener("click", loadEstado);
+
   loadEstado();
 });
