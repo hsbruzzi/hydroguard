@@ -5,337 +5,213 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark light">
 <title>HydroGuard · Sarandí</title>
-
 <style>
 :root {
   color-scheme: dark;
-  --bg: #101b27;
-  --panel: #192b3b;
-  --text: #e4edf5;
-  --muted: #afc2d0;
-  --line: #364c5e;
-  --link: #263f53;
-  --green: #48bd80;
-  --yellow: #e8b648;
-  --red: #f3777b;
-  --gray: #a6b2bf;
+  --bg:#101b27;
+  --panel:#192b3b;
+  --text:#e4edf5;
+  --muted:#afc2d0;
+  --line:#364c5e;
+  --link:#263f53;
+  --green:#48bd80;
+  --yellow:#e8b648;
+  --red:#f3777b;
+  --gray:#a6b2bf;
 }
-
-* { box-sizing: border-box; }
-
+* { box-sizing:border-box; }
 body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--text);
-  font: 16px/1.5 system-ui, -apple-system, sans-serif;
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font:16px/1.5 system-ui,-apple-system,sans-serif;
 }
-
-main {
-  max-width: 940px;
-  margin: auto;
-  padding: 22px 18px;
-}
-
+main { max-width:940px; margin:auto; padding:22px 18px; }
 header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 20px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:16px;
+  margin-bottom:20px;
 }
-
-h1 { font-size: 1.55rem; margin: 0; }
-h2 { font-size: 1.05rem; margin: 23px 0 10px; }
-h3 { font-size: 1rem; margin: 0; }
-p { margin: 8px 0; }
-
-.muted {
-  color: var(--muted);
-  font-size: .83rem;
+h1 { font-size:1.55rem; margin:0; }
+h2 { font-size:1.05rem; margin:23px 0 10px; }
+h3 { font-size:1rem; margin:0; }
+p { margin:8px 0; }
+.muted { color:var(--muted); font-size:.83rem; }
+.links { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
+button,.source {
+  font:inherit;
+  color:var(--text);
+  background:var(--link);
+  border:1px solid var(--line);
+  border-radius:9px;
+  min-height:44px;
+  padding:9px 12px;
+  text-decoration:none;
+  cursor:pointer;
 }
-
-.links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 14px;
-}
-
-button, .source {
-  font: inherit;
-  color: var(--text);
-  background: var(--link);
-  border: 1px solid var(--line);
-  border-radius: 9px;
-  min-height: 44px;
-  padding: 9px 12px;
-  text-decoration: none;
-  cursor: pointer;
-}
-
-.source {
-  display: inline-flex;
-  align-items: center;
-  font-size: .82rem;
-}
-
-button:hover, .source:hover {
-  filter: brightness(1.15);
-}
-
-button:disabled {
-  opacity: .65;
-  cursor: wait;
-}
-
-:focus-visible {
-  outline: 3px solid var(--yellow);
-  outline-offset: 3px;
-}
-
+.source { display:inline-flex; align-items:center; font-size:.82rem; }
+button:hover,.source:hover { filter:brightness(1.15); }
+button:disabled { opacity:.65; cursor:wait; }
+:focus-visible { outline:3px solid var(--yellow); outline-offset:3px; }
 .hero {
-  --signal: var(--gray);
-  background: var(--panel);
-  padding: 22px;
-  border-radius: 16px;
-  border-left: 6px solid var(--signal);
+  --signal:var(--gray);
+  background:var(--panel);
+  padding:22px;
+  border-radius:16px;
+  border-left:6px solid var(--signal);
 }
-
-.hero.verde { --signal: var(--green); }
-.hero.amarillo { --signal: var(--yellow); }
-.hero.rojo { --signal: var(--red); }
-
-.status-row {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-
+.hero.verde { --signal:var(--green); }
+.hero.amarillo { --signal:var(--yellow); }
+.hero.rojo { --signal:var(--red); }
+.status-row { display:flex; align-items:center; gap:20px; }
 .light {
-  width: 52px;
-  height: 52px;
-  flex: 0 0 52px;
-  border-radius: 50%;
-  background: var(--signal);
-  box-shadow: 0 0 0 7px
-    color-mix(in srgb, var(--signal) 13%, transparent);
+  width:52px;
+  height:52px;
+  flex:0 0 52px;
+  border-radius:50%;
+  background:var(--signal);
+  box-shadow:0 0 0 7px color-mix(in srgb,var(--signal) 13%,transparent);
 }
-
 .eyebrow {
-  font-size: .73rem;
-  letter-spacing: .07em;
-  text-transform: uppercase;
-  color: var(--muted);
+  font-size:.73rem;
+  letter-spacing:.07em;
+  text-transform:uppercase;
+  color:var(--muted);
 }
-
 #estado {
-  font-size: 1.8rem;
-  line-height: 1.2;
-  margin: 5px 0 10px;
-  overflow-wrap: anywhere;
+  font-size:1.8rem;
+  line-height:1.2;
+  margin:5px 0 10px;
+  overflow-wrap:anywhere;
 }
-
 .action {
-  padding-top: 12px;
-  margin-top: 15px;
-  border-top: 1px solid var(--line);
-  font-weight: 600;
+  padding-top:12px;
+  margin-top:15px;
+  border-top:1px solid var(--line);
+  font-weight:600;
 }
-
 .limitations {
-  background: #45371d;
-  color: #ffe0a0;
-  padding: 12px 15px;
-  border-radius: 10px;
-  margin-top: 14px;
+  background:#45371d;
+  color:#ffe0a0;
+  padding:12px 15px;
+  border-radius:10px;
+  margin-top:14px;
 }
-
-.limitations ul {
-  margin: 7px 0;
-  padding-left: 20px;
-}
-
+.limitations ul { margin:7px 0; padding-left:20px; }
 .health {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 12px 2px;
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:space-between;
+  gap:8px;
+  padding:12px 2px;
 }
-
 .metrics {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:12px;
 }
-
-.metric, .panel {
-  background: var(--panel);
-  border-radius: 12px;
-  padding: 16px;
-  min-width: 0;
+.metric,.panel {
+  background:var(--panel);
+  border-radius:12px;
+  padding:16px;
+  min-width:0;
 }
-
 .value {
-  font-size: 1.8rem;
-  font-weight: 650;
-  font-variant-numeric: tabular-nums;
-  margin: 8px 0;
-  overflow-wrap: anywhere;
+  font-size:1.8rem;
+  font-weight:650;
+  font-variant-numeric:tabular-nums;
+  margin:8px 0;
+  overflow-wrap:anywhere;
 }
-
 .secondary {
-  font-size: .85rem;
-  border-top: 1px solid var(--line);
-  padding-top: 10px;
-  margin-top: 10px;
+  font-size:.85rem;
+  border-top:1px solid var(--line);
+  padding-top:10px;
+  margin-top:10px;
 }
-
-.metric-status {
-  margin-top: 6px;
-  color: var(--muted);
-  font-size: .8rem;
-}
-
-.metric-status.attention {
-  color: var(--yellow);
-}
-
+.metric-status { margin-top:6px; color:var(--muted); font-size:.8rem; }
+.metric-status.attention { color:var(--yellow); }
 .forecast {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 8px;
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:8px;
 }
-
 .day {
-  padding: 12px 9px;
-  background: var(--panel);
-  border-radius: 10px;
-  text-align: center;
-  min-width: 0;
+  padding:12px 9px;
+  background:var(--panel);
+  border-radius:10px;
+  text-align:center;
+  min-width:0;
 }
-
-.day strong {
-  display: block;
-  margin: 9px 0;
-  font-size: 1.2rem;
-}
-
-.day .muted { font-size: .76rem; }
-
+.day strong { display:block; margin:9px 0; font-size:1.2rem; }
+.day .muted { font-size:.76rem; }
 .notice {
-  border-top: 1px solid var(--line);
-  margin-top: 12px;
-  padding-top: 12px;
-  overflow-wrap: anywhere;
+  border-top:1px solid var(--line);
+  margin-top:12px;
+  padding-top:12px;
+  overflow-wrap:anywhere;
 }
-
-.notice p { font-size: .87rem; }
-.notice a { color: var(--text); }
-
-details {
-  border-top: 1px solid var(--line);
-  margin-top: 18px;
-}
-
-summary {
-  min-height: 44px;
-  padding: 14px 0;
-  font-weight: 600;
-  cursor: pointer;
-}
-
+.notice p { font-size:.87rem; }
+.notice a { color:var(--text); }
+details { border-top:1px solid var(--line); margin-top:18px; }
+summary { min-height:44px; padding:14px 0; font-weight:600; cursor:pointer; }
 .detail-row {
-  border-bottom: 1px solid var(--line);
-  padding: 10px 0;
-  font-size: .84rem;
-  overflow-wrap: anywhere;
+  border-bottom:1px solid var(--line);
+  padding:10px 0;
+  font-size:.84rem;
+  overflow-wrap:anywhere;
 }
-
-.technical {
-  padding-left: 20px;
-  font-size: .83rem;
-  overflow-wrap: anywhere;
-}
-
-.technical li { margin: 10px 0; }
-
-footer {
-  margin-top: 23px;
-  color: var(--muted);
-  font-size: .76rem;
-}
-
-#motivos { padding-left: 21px; }
-[hidden] { display: none !important; }
-
-@media (prefers-color-scheme: light) {
+.technical { padding-left:20px; font-size:.83rem; overflow-wrap:anywhere; }
+.technical li { margin:10px 0; }
+footer { margin-top:23px; color:var(--muted); font-size:.76rem; }
+#motivos { padding-left:21px; }
+[hidden] { display:none !important; }
+@media (prefers-color-scheme:light) {
   :root {
-    color-scheme: light;
-    --bg: #f3f6f9;
-    --panel: #fff;
-    --text: #183044;
-    --muted: #536b7d;
-    --line: #d2dde6;
-    --link: #eaf1f7;
-    --green: #198b51;
-    --yellow: #aa7400;
-    --red: #c8323b;
-    --gray: #718092;
+    color-scheme:light;
+    --bg:#f3f6f9;
+    --panel:#fff;
+    --text:#183044;
+    --muted:#536b7d;
+    --line:#d2dde6;
+    --link:#eaf1f7;
+    --green:#198b51;
+    --yellow:#aa7400;
+    --red:#c8323b;
+    --gray:#718092;
   }
-
-  .limitations {
-    background: #fff0cc;
-    color: #664300;
-  }
+  .limitations { background:#fff0cc; color:#664300; }
 }
-
-@media (max-width: 650px) {
-  main { padding: 16px 12px; }
-
-  .metrics { grid-template-columns: 1fr; }
-
+@media (max-width:650px) {
+  main { padding:16px 12px; }
+  .metrics { grid-template-columns:1fr; }
   .metric {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    column-gap: 10px;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    column-gap:10px;
   }
-
   .metric .value {
-    grid-column: 2;
-    grid-row: 1 / 3;
-    text-align: right;
-    margin: 0;
+    grid-column:2;
+    grid-row:1 / 3;
+    text-align:right;
+    margin:0;
   }
-
-  .metric .secondary,
-  .metric .links,
-  .metric .metric-status {
-    grid-column: 1 / -1;
+  .metric .secondary,.metric .links,.metric .metric-status {
+    grid-column:1 / -1;
   }
-
-  .forecast {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  #estado { font-size: 1.45rem; }
-  .hero { padding: 18px; }
-
-  .light {
-    width: 42px;
-    height: 42px;
-    flex-basis: 42px;
-  }
-
-  header { align-items: flex-start; }
-  h1 { font-size: 1.3rem; }
+  .forecast { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  #estado { font-size:1.45rem; }
+  .hero { padding:18px; }
+  .light { width:42px; height:42px; flex-basis:42px; }
+  header { align-items:flex-start; }
+  h1 { font-size:1.3rem; }
 }
 </style>
 </head>
-
 <body>
 <main>
-
 <header>
   <div>
     <h1>HydroGuard</h1>
@@ -344,12 +220,7 @@ footer {
   <button id="actualizar" type="button">Actualizar</button>
 </header>
 
-<section
-  id="hero"
-  class="hero"
-  aria-live="polite"
-  aria-label="Semáforo hídrico"
->
+<section id="hero" class="hero" aria-live="polite" aria-label="Semáforo hídrico">
   <div class="status-row">
     <span class="light" aria-hidden="true"></span>
     <div>
@@ -357,13 +228,8 @@ footer {
       <h2 id="estado">Cargando información</h2>
     </div>
   </div>
-
   <p id="resumen">Esperando la respuesta de HydroGuard.</p>
-
-  <div id="accion" class="action">
-    La consulta puede demorar unos segundos.
-  </div>
-
+  <div id="accion" class="action">La consulta puede demorar unos segundos.</div>
   <div id="limitaciones" class="limitations" hidden>
     <strong>Información que limita la evaluación</strong>
     <ul id="faltantes"></ul>
@@ -376,34 +242,21 @@ footer {
 </div>
 
 <h2>Situación actual</h2>
-
 <div class="metrics">
-
   <section class="metric">
     <h3>Lluvia</h3>
     <div class="value" id="intensidad">Sin dato</div>
     <div class="muted">Intensidad estimada · modelo</div>
-
     <div class="secondary">
-      <div id="lluvia-actual">
-        Precipitación del período actual: sin dato
-      </div>
+      <div id="lluvia-actual">Precipitación del período actual: sin dato</div>
       <div id="lluvia24">24 h: sin dato</div>
       <div id="lluvia72">3 días: sin dato</div>
-      <div id="fecha-meteo" class="muted">
-        Hora del modelo sin verificar
-      </div>
+      <div id="fecha-meteo" class="muted">Hora del modelo sin verificar</div>
     </div>
-
     <div id="estado-meteo" class="metric-status"></div>
-
     <div class="links">
-      <a
-        class="source"
-        href="https://open-meteo.com/en/docs"
-        target="_self"
-        rel="noopener noreferrer"
-      >Ver proveedor Open-Meteo ↗</a>
+      <a class="source" href="https://open-meteo.com/en/docs"
+         target="_self" rel="noopener noreferrer">Ver proveedor Open-Meteo ↗</a>
     </div>
   </section>
 
@@ -411,27 +264,16 @@ footer {
     <h3>Río de la Plata</h3>
     <div id="nivel" class="value">Sin dato</div>
     <div id="estacion" class="muted">Estación sin verificar</div>
-
     <div class="secondary">
       <div id="tendencia">Variación sin verificar</div>
-      <div id="fecha-rio" class="muted">
-        Medición sin verificar
-      </div>
-      <div id="referencia" class="muted">
-        Referencia sin informar
-      </div>
+      <div id="fecha-rio" class="muted">Medición sin verificar</div>
+      <div id="referencia" class="muted">Referencia sin informar</div>
     </div>
-
     <div id="estado-rio" class="metric-status"></div>
-
     <div class="links">
-      <a
-        id="fuente-rio"
-        class="source"
-        href="https://www.hidro.gov.ar/Oceanografia/AlturasHorarias.asp"
-        target="_self"
-        rel="noopener noreferrer"
-      >Consultar SHN ↗</a>
+      <a id="fuente-rio" class="source"
+         href="https://www.hidro.gov.ar/Oceanografia/AlturasHorarias.asp"
+         target="_self" rel="noopener noreferrer">Consultar SHN ↗</a>
     </div>
   </section>
 
@@ -439,79 +281,56 @@ footer {
     <h3>Viento</h3>
     <div id="viento" class="value">Sin dato</div>
     <div class="muted">Estimación del modelo</div>
-
     <div class="secondary">
       <div id="direccion">Dirección sin dato</div>
-      <div id="fecha-viento" class="muted">
-        Hora del modelo sin verificar
-      </div>
+      <div id="fecha-viento" class="muted">Hora del modelo sin verificar</div>
     </div>
-
     <div class="links">
-      <a
-        class="source"
-        href="https://open-meteo.com/en/docs"
-        target="_self"
-        rel="noopener noreferrer"
-      >Ver proveedor Open-Meteo ↗</a>
+      <a class="source" href="https://open-meteo.com/en/docs"
+         target="_self" rel="noopener noreferrer">Ver proveedor Open-Meteo ↗</a>
     </div>
   </section>
-
 </div>
 
 <h2>Alertas oficiales · SMN</h2>
-
 <section class="panel">
   <h3 id="smn-estado">Consulta pendiente</h3>
-
   <p id="smn-detalle" class="muted">
     Aún no se verificaron los canales de alertas y avisos a corto plazo.
   </p>
-
   <div id="avisos"></div>
 
-  <div class="links">
-    <a
-      class="source"
-      href="https://www.smn.gob.ar/alertas"
-      target="_self"
-      rel="noopener noreferrer"
-    >Ver alertas SMN ↗</a>
+  <p class="muted">
+    Los botones abren sitios externos. Si el mapa del SMN muestra un
+    bloqueo, volvé con la flecha del navegador y probá el canal oficial
+    XML. El bloqueo del mapa no determina el estado de la consulta
+    automática. Abrir un enlace no confirma que sus datos estén vigentes.
+  </p>
 
-    <a
-      class="source"
-      href="https://ssl.smn.gob.ar/feeds/CAP/avisocortoplazo/rss_acpCAP.xml"
-      target="_self"
-      rel="noopener noreferrer"
-    >Ver canal ACP (XML) ↗</a>
+  <div class="links">
+    <a class="source" href="https://www.smn.gob.ar/alertas"
+       target="_self" rel="noopener noreferrer">Abrir mapa SMN ↗</a>
+    <a class="source" href="https://ssl.smn.gob.ar/CAP/AR.php"
+       target="_self" rel="noopener noreferrer">Canal oficial de alertas (XML) ↗</a>
+    <a class="source"
+       href="https://ssl.smn.gob.ar/feeds/CAP/avisocortoplazo/rss_acpCAP.xml"
+       target="_self" rel="noopener noreferrer">Ver canal ACP (XML) ↗</a>
   </div>
 </section>
 
 <h2>Próximos días <span class="muted">· pronóstico</span></h2>
-
 <div id="pronostico" class="forecast">
   <p class="muted">Sin pronóstico disponible.</p>
 </div>
 
 <h2>Panorama regional y climático</h2>
-
 <section class="panel">
   <div class="links">
-    <a
-      class="source"
-      href="https://www.ina.gob.ar/alerta/"
-      target="_self"
-      rel="noopener noreferrer"
-    >Mesopotamia · alertas INA ↗</a>
-
-    <a
-      class="source"
-      href="https://ws2.smn.gob.ar/enos"
-      target="_self"
-      rel="noopener noreferrer"
-    >El Niño / La Niña · SMN ↗</a>
+    <a class="source" href="https://www.ina.gob.ar/alerta/"
+       target="_self" rel="noopener noreferrer">Mesopotamia · alertas INA ↗</a>
+    <a class="source" href="https://ws2.smn.gob.ar/enos"
+       target="_self" rel="noopener noreferrer">El Niño / La Niña · SMN ↗</a>
   </div>
-
   <p class="muted">
     INA: informes de la Cuenca del Plata, incluidos Paraná y Uruguay;
     seleccioná la región en la fuente. ENOS: seguimiento climático,
@@ -521,68 +340,44 @@ footer {
 
 <details>
   <summary>Qué determina este estado</summary>
-
   <p id="explicacion">Esperando evaluación.</p>
   <ul id="motivos"></ul>
-
   <p class="muted">
     El color de HydroGuard resulta de sus criterios operativos.
-    No equivale al color oficial del SMN. Los datos faltantes
-    impiden el verde, pero una señal disponible puede mantener
-    amarillo o rojo con evaluación parcial.
+    No equivale al color oficial del SMN. Los datos faltantes impiden
+    el verde, pero una señal disponible puede mantener amarillo
+    o rojo con evaluación parcial.
   </p>
 </details>
 
 <details>
   <summary>Fuentes, horarios y detalles técnicos</summary>
-
   <div class="detail-row">
     Lluvia y viento: estimaciones de un modelo meteorológico;
     no son mediciones de un pluviómetro local.
   </div>
-
-  <div class="detail-row" id="detalle-rio">
-    Metadatos del río pendientes.
-  </div>
-
-  <div class="detail-row" id="detalle-smn">
-    Metadatos del SMN pendientes.
-  </div>
-
-  <div class="detail-row" id="umbrales">
-    Criterios configurados pendientes.
-  </div>
-
+  <div class="detail-row" id="detalle-rio">Metadatos del río pendientes.</div>
+  <div class="detail-row" id="detalle-smn">Metadatos del SMN pendientes.</div>
+  <div class="detail-row" id="umbrales">Criterios configurados pendientes.</div>
   <div class="detail-row">
     Los accesos abren las fuentes externas y no validan automáticamente
     su contenido. Open-Meteo abre la documentación del proveedor;
-    el canal ACP abre XML. Compará estación, referencia, unidades y
-    hora antes de comparar niveles.
+    los canales CAP y ACP abren XML. Compará estación, referencia,
+    unidades y hora antes de comparar niveles.
   </div>
-
   <ul id="checklist" class="technical"></ul>
   <div id="fuentes" class="detail-row"></div>
 </details>
 
 <details>
   <summary>Otras consultas oficiales</summary>
-
   <div class="links">
-    <a
-      class="source"
-      href="https://contenidosweb.prefecturanaval.gob.ar/alturas/"
-      target="_self"
-      rel="noopener noreferrer"
-    >Consultar Prefectura ↗</a>
-
-    <a
-      class="source"
-      href="https://www.ina.gob.ar/alerta/"
-      target="_self"
-      rel="noopener noreferrer"
-    >Consultar INA ↗</a>
+    <a class="source"
+       href="https://contenidosweb.prefecturanaval.gob.ar/alturas/"
+       target="_self" rel="noopener noreferrer">Consultar Prefectura ↗</a>
+    <a class="source" href="https://www.ina.gob.ar/alerta/"
+       target="_self" rel="noopener noreferrer">Consultar INA ↗</a>
   </div>
-
   <p class="muted">
     Fuentes complementarias. Sus estaciones y referencias pueden
     diferir de las utilizadas en el panel.
@@ -597,17 +392,13 @@ footer {
   Desarrollado por HSbruzzi · Actualización automática cada 5 minutos
   mientras la página está visible.
 </footer>
-
 </main>
 
 <script>
 'use strict';
 
 const $ = id => document.getElementById(id);
-
-const texto = (id, value) => {
-  $(id).textContent = value;
-};
+const texto = (id, value) => { $(id).textContent = value; };
 
 function numero(value) {
   if (
@@ -615,17 +406,13 @@ function numero(value) {
     value === undefined ||
     value === '' ||
     typeof value === 'boolean'
-  ) {
-    return null;
-  }
-
+  ) return null;
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
 }
 
 function medida(value, unit, digits = 1) {
   const n = numero(value);
-
   return n === null
     ? 'Sin dato'
     : n.toLocaleString('es-AR', {
@@ -637,12 +424,9 @@ function fecha(value) {
   if (
     typeof value !== 'string' ||
     !/(Z|[+-]\d{2}:\d{2})$/.test(value)
-  ) {
-    return 'sin fecha verificable';
-  }
+  ) return 'sin fecha verificable';
 
   const d = new Date(value);
-
   return Number.isNaN(d.getTime())
     ? 'sin fecha verificable'
     : d.toLocaleString('es-AR', {
@@ -665,15 +449,12 @@ function fila(parent, text, tag = 'div', className = '') {
 function enlaceSeguro(value) {
   try {
     const u = new URL(value);
-
     if (
       u.protocol !== 'https:' ||
       u.username ||
       u.password ||
       (u.port && u.port !== '443')
-    ) {
-      return null;
-    }
+    ) return null;
 
     const hosts = [
       'ssl.smn.gob.ar',
@@ -683,7 +464,6 @@ function enlaceSeguro(value) {
       'hidro.gov.ar',
       'contenidosweb.prefecturanaval.gob.ar'
     ];
-
     return hosts.includes(u.hostname) ? u.href : null;
   } catch {
     return null;
@@ -695,12 +475,7 @@ function pronostico(items) {
   container.replaceChildren();
 
   if (!Array.isArray(items) || !items.length) {
-    fila(
-      container,
-      'Sin pronóstico disponible.',
-      'p',
-      'muted'
-    );
+    fila(container, 'Sin pronóstico disponible.', 'p', 'muted');
     return;
   }
 
@@ -711,7 +486,6 @@ function pronostico(items) {
     fila(box, String(day.fecha || 'Sin fecha'));
     fila(box, medida(day.lluvia_mm, 'mm'), 'strong');
     fila(box, 'Lluvia estimada', 'div', 'muted');
-
     fila(
       box,
       'Prob.: ' + medida(day.prob_lluvia_pct, '%', 0),
@@ -720,29 +494,15 @@ function pronostico(items) {
     );
 
     const more = document.createElement('details');
-
     fila(more, 'Más datos', 'summary');
-
     fila(
       more,
       String(day.condicion || 'Condición sin dato'),
       'div',
       'muted'
     );
-
-    fila(
-      more,
-      'Máx.: ' + medida(day.temp_max_c, '°C'),
-      'div',
-      'muted'
-    );
-
-    fila(
-      more,
-      'Mín.: ' + medida(day.temp_min_c, '°C'),
-      'div',
-      'muted'
-    );
+    fila(more, 'Máx.: ' + medida(day.temp_max_c, '°C'), 'div', 'muted');
+    fila(more, 'Mín.: ' + medida(day.temp_min_c, '°C'), 'div', 'muted');
 
     box.appendChild(more);
     container.appendChild(box);
@@ -753,9 +513,7 @@ function mostrar(payload) {
   const d = payload.datos || {};
   const meta = payload.meta || {};
 
-  const state = ['VERDE', 'AMARILLO', 'ROJO'].includes(
-    payload.semaforo
-  )
+  const state = ['VERDE', 'AMARILLO', 'ROJO'].includes(payload.semaforo)
     ? payload.semaforo
     : 'INFORMACIÓN INSUFICIENTE';
 
@@ -772,46 +530,33 @@ function mostrar(payload) {
   };
 
   $('hero').className = 'hero ' + (classes[state] || 'gris');
-
   texto(
     'color',
     state === 'INFORMACIÓN INSUFICIENTE'
       ? 'Evaluación limitada'
       : 'Semáforo HydroGuard · ' + state
   );
-
-  texto(
-    'estado',
-    titles[state] || 'Información insuficiente'
-  );
+  texto('estado', titles[state] || 'Información insuficiente');
 
   const reasons = {
-    VERDE:
-      'Los datos evaluados no superan los criterios de atención.',
-    AMARILLO:
-      'La evaluación activa un criterio de atención de HydroGuard.',
-    ROJO:
-      'La evaluación activa un criterio rojo de HydroGuard.'
+    VERDE: 'Los datos evaluados no superan los criterios de atención.',
+    AMARILLO: 'La evaluación activa un criterio de atención de HydroGuard.',
+    ROJO: 'La evaluación activa un criterio rojo de HydroGuard.'
   };
-
   texto(
     'resumen',
-    reasons[state] ||
-      'Faltan datos o no se pudo verificar su vigencia.'
+    reasons[state] || 'Faltan datos o no se pudo verificar su vigencia.'
   );
 
   const actions = {
     VERDE: 'Continuar el seguimiento.',
-    AMARILLO:
-      'Reforzar el seguimiento y consultar los avisos oficiales.',
-    ROJO:
-      'Consultar los avisos oficiales y seguir las indicaciones de las autoridades.'
+    AMARILLO: 'Reforzar el seguimiento y consultar los avisos oficiales.',
+    ROJO: 'Consultar los avisos oficiales y seguir las indicaciones de las autoridades.'
   };
-
   texto(
     'accion',
     actions[state] ||
-      'Consultar las fuentes oficiales; no se puede confirmar el verde.'
+    'Consultar las fuentes oficiales; no se puede confirmar el verde.'
   );
 
   const missing = Array.isArray(d.datos_faltantes)
@@ -819,11 +564,7 @@ function mostrar(payload) {
     : ['Respuesta sin diagnóstico de disponibilidad'];
 
   $('faltantes').replaceChildren();
-
-  missing.forEach(x => {
-    fila($('faltantes'), String(x), 'li');
-  });
-
+  missing.forEach(x => fila($('faltantes'), String(x), 'li'));
   $('limitaciones').hidden = !missing.length;
 
   texto(
@@ -832,66 +573,23 @@ function mostrar(payload) {
       ? 'Evaluación parcial · revisar limitaciones'
       : 'Sin faltantes informados por el backend'
   );
+  texto('consulta', 'Consulta del panel: ' + fecha(meta.updated_at));
 
-  texto(
-    'consulta',
-    'Consulta del panel: ' + fecha(meta.updated_at)
-  );
-
-  texto(
-    'intensidad',
-    medida(d.intensidad_mm_h, 'mm/h')
-  );
-
+  texto('intensidad', medida(d.intensidad_mm_h, 'mm/h'));
   texto(
     'lluvia-actual',
-    'Precipitación del período actual: ' +
-      medida(d.lluvia_actual_mm, 'mm')
+    'Precipitación del período actual: ' + medida(d.lluvia_actual_mm, 'mm')
   );
-
-  texto(
-    'lluvia24',
-    '24 h: ' + medida(d.lluvia_24h_mm, 'mm') +
-      ' · estimadas'
-  );
-
-  texto(
-    'lluvia72',
-    '3 días: ' + medida(d.lluvia_3dias_mm, 'mm') +
-      ' · estimados'
-  );
-
-  texto(
-    'fecha-meteo',
-    'Hora del modelo: ' + fecha(d.weather_observed_at)
-  );
-
-  texto(
-    'fecha-viento',
-    'Hora del modelo: ' + fecha(d.weather_observed_at)
-  );
-
-  texto(
-    'estado-meteo',
-    d.weather_data_status || 'Vigencia sin verificar'
-  );
+  texto('lluvia24', '24 h: ' + medida(d.lluvia_24h_mm, 'mm') + ' · estimadas');
+  texto('lluvia72', '3 días: ' + medida(d.lluvia_3dias_mm, 'mm') + ' · estimados');
+  texto('fecha-meteo', 'Hora del modelo: ' + fecha(d.weather_observed_at));
+  texto('fecha-viento', 'Hora del modelo: ' + fecha(d.weather_observed_at));
+  texto('estado-meteo', d.weather_data_status || 'Vigencia sin verificar');
 
   texto('nivel', medida(d.nivel_rio_m, 'm', 2));
-
-  texto(
-    'estacion',
-    d.river_site_name || 'Estación sin dato'
-  );
-
-  texto(
-    'fecha-rio',
-    'Medición: ' + fecha(d.river_observed_at)
-  );
-
-  texto(
-    'referencia',
-    'Referencia: ' + (d.river_reference || 'sin informar')
-  );
+  texto('estacion', d.river_site_name || 'Estación sin dato');
+  texto('fecha-rio', 'Medición: ' + fecha(d.river_observed_at));
+  texto('referencia', 'Referencia: ' + (d.river_reference || 'sin informar'));
 
   const delta = numero(d.river_variacion_m);
   const hours = numero(d.river_interval_hours);
@@ -899,13 +597,7 @@ function mostrar(payload) {
   texto(
     'tendencia',
     delta !== null && hours !== null && hours > 0
-      ? (
-          delta > 0
-            ? 'Sube '
-            : delta < 0
-              ? 'Baja '
-              : 'Sin cambio: '
-        ) +
+      ? (delta > 0 ? 'Sube ' : delta < 0 ? 'Baja ' : 'Sin cambio: ') +
         medida(Math.abs(delta), 'm', 2) +
         ' en ' + medida(hours, 'h')
       : 'Variación sin intervalo verificable'
@@ -914,46 +606,30 @@ function mostrar(payload) {
   texto(
     'estado-rio',
     (d.river_data_status || 'Vigencia sin verificar') +
-      ' · antigüedad: ' +
-      medida(d.river_age_minutes, 'min', 0)
+    ' · antigüedad: ' + medida(d.river_age_minutes, 'min', 0)
   );
 
   ['estado-rio', 'estado-meteo'].forEach(id => {
-    $(id).className =
-      'metric-status' +
-      (
-        /atrasado|sin dato|no verificable|sin verificar/.test(
-          $(id).textContent
-        )
-          ? ' attention'
-          : ''
-      );
+    $(id).className = 'metric-status' +
+      (/atrasado|sin dato|no verificable|sin verificar/.test($(id).textContent)
+        ? ' attention'
+        : '');
   });
 
   texto('viento', medida(d.viento_kmh, 'km/h'));
-
-  texto(
-    'direccion',
-    'Dirección: ' + (d.direccion_viento || 'sin dato')
-  );
+  texto('direccion', 'Dirección: ' + (d.direccion_viento || 'sin dato'));
 
   const riverUrl = enlaceSeguro(d.river_source_url);
-
   $('fuente-rio').href =
-    riverUrl ||
-    'https://www.hidro.gov.ar/Oceanografia/AlturasHorarias.asp';
-
+    riverUrl || 'https://www.hidro.gov.ar/Oceanografia/AlturasHorarias.asp';
   texto(
     'fuente-rio',
     riverUrl
-      ? 'Ver ' +
-        (d.river_source_name || 'fuente del río') + ' ↗'
+      ? 'Ver ' + (d.river_source_name || 'fuente del río') + ' ↗'
       : 'Consultar SHN ↗'
   );
 
-  const notices = Array.isArray(d.smn_avisos)
-    ? d.smn_avisos
-    : [];
+  const notices = Array.isArray(d.smn_avisos) ? d.smn_avisos : [];
 
   texto(
     'smn-estado',
@@ -966,13 +642,11 @@ function mostrar(payload) {
 
   texto(
     'smn-detalle',
-    (
-      d.smn_verificado === true
-        ? 'Ambos canales verificados. '
-        : 'No se puede confirmar la ausencia de avisos. '
-    ) +
-      (d.smn_cobertura || 'Cobertura sin informar.') +
-      ' Consulta: ' + fecha(d.smn_consultado_at)
+    (d.smn_verificado === true
+      ? 'Ambos canales verificados. '
+      : 'No se puede confirmar la ausencia de avisos. ') +
+    (d.smn_cobertura || 'Cobertura sin informar.') +
+    ' Consulta: ' + fecha(d.smn_consultado_at)
   );
 
   $('avisos').replaceChildren();
@@ -982,28 +656,22 @@ function mostrar(payload) {
     box.className = 'notice';
 
     fila(box, String(a.evento || 'Aviso SMN'), 'h3');
-
     fila(
       box,
-      'Severidad CAP: ' +
-        (a.severidad_cap || 'sin dato') +
-        ' · ' +
-        (a.periodo || 'período sin verificar'),
+      'Severidad CAP: ' + (a.severidad_cap || 'sin dato') +
+      ' · ' + (a.periodo || 'período sin verificar'),
       'p'
     );
-
     fila(
       box,
       'Emisión: ' + fecha(a.emitido_at) +
-        ' · Inicio previsto: ' + fecha(a.inicio_at) +
-        ' · Vence: ' + fecha(a.vence_at),
+      ' · Inicio previsto: ' + fecha(a.inicio_at) +
+      ' · Vence: ' + fecha(a.vence_at),
       'p',
       'muted'
     );
 
-    if (a.descripcion) {
-      fila(box, String(a.descripcion), 'p');
-    }
+    if (a.descripcion) fila(box, String(a.descripcion), 'p');
 
     if (a.instrucciones) {
       const more = document.createElement('details');
@@ -1013,15 +681,8 @@ function mostrar(payload) {
     }
 
     const url = enlaceSeguro(a.url);
-
     if (url) {
-      const link = fila(
-        box,
-        'Abrir aviso oficial ↗',
-        'a',
-        'source'
-      );
-
+      const link = fila(box, 'Abrir aviso oficial ↗', 'a', 'source');
       link.href = url;
       link.target = '_self';
       link.rel = 'noopener noreferrer';
@@ -1031,19 +692,14 @@ function mostrar(payload) {
   });
 
   pronostico(d.pronostico_5dias);
-
-  texto(
-    'explicacion',
-    payload.interpretacion || 'Evaluación no disponible.'
-  );
-
+  texto('explicacion', payload.interpretacion || 'Evaluación no disponible.');
   $('motivos').replaceChildren();
 
   if (notices.length) {
     fila(
       $('motivos'),
       'Hay avisos coincidentes con el filtro regional amplio. ' +
-        'Pueden corresponder a zonas vecinas o períodos futuros.',
+      'Pueden corresponder a zonas vecinas o períodos futuros.',
       'li'
     );
   }
@@ -1052,7 +708,7 @@ function mostrar(payload) {
     fila(
       $('motivos'),
       'La evaluación tiene ' + missing.length +
-        ' limitación(es), indicadas junto al semáforo.',
+      ' limitación(es), indicadas junto al semáforo.',
       'li'
     );
   }
@@ -1066,57 +722,41 @@ function mostrar(payload) {
   texto(
     'detalle-rio',
     'Fuente del río: ' +
-      (d.river_source_name || d.river_source || 'sin dato') +
-      '. Consulta de la fuente: ' +
-      fecha(d.river_fetched_at) +
-      '. Medición anterior: ' +
-      fecha(d.river_previous_observed_at) +
-      '. Valor anterior: ' +
-      medida(d.river_previous_value_m, 'm', 2) + '.'
+    (d.river_source_name || d.river_source || 'sin dato') +
+    '. Consulta de la fuente: ' + fecha(d.river_fetched_at) +
+    '. Medición anterior: ' + fecha(d.river_previous_observed_at) +
+    '. Valor anterior: ' + medida(d.river_previous_value_m, 'm', 2) + '.'
   );
 
   texto(
     'detalle-smn',
     (d.smn_criterio || 'Criterio SMN sin informar') +
-      ' Publicación de canales: ' +
-      (
-        Array.isArray(d.smn_fuentes)
-          ? d.smn_fuentes.map(
-              f => f.tipo + ': ' + fecha(f.publicado_at)
-            ).join(' · ')
-          : 'sin dato'
-      )
+    ' Publicación de canales: ' +
+    (Array.isArray(d.smn_fuentes)
+      ? d.smn_fuentes.map(
+          f => f.tipo + ': ' + fecha(f.publicado_at)
+        ).join(' · ')
+      : 'sin dato')
   );
 
   texto(
     'umbrales',
     'Niveles configurados en el backend: alerta ' +
-      medida(d.alerta_rio_m, 'm', 2) +
-      '; evacuación ' +
-      medida(d.evacuacion_rio_m, 'm', 2) +
-      '. Su aplicación requiere verificar estación y referencia. ' +
-      'Vigencia operativa: río hasta 3 h; meteorología hasta 2 h. ' +
-      'Son criterios propios de HydroGuard.'
+    medida(d.alerta_rio_m, 'm', 2) +
+    '; evacuación ' + medida(d.evacuacion_rio_m, 'm', 2) +
+    '. Su aplicación requiere verificar estación y referencia. ' +
+    'Vigencia operativa: río hasta 3 h; meteorología hasta 2 h. ' +
+    'Son criterios propios de HydroGuard.'
   );
 
   $('checklist').replaceChildren();
-
-  (
-    Array.isArray(payload.checklist)
-      ? payload.checklist
-      : []
-  ).forEach(x => {
-    fila($('checklist'), String(x), 'li');
-  });
+  (Array.isArray(payload.checklist) ? payload.checklist : [])
+    .forEach(x => fila($('checklist'), String(x), 'li'));
 
   texto(
     'fuentes',
     'Fuentes informadas: ' +
-      (
-        Array.isArray(meta.fuentes)
-          ? meta.fuentes.join(' · ')
-          : 'sin dato'
-      )
+    (Array.isArray(meta.fuentes) ? meta.fuentes.join(' · ') : 'sin dato')
   );
 }
 
@@ -1129,8 +769,6 @@ async function actualizar() {
   $('actualizar').disabled = true;
   texto('actualizar', 'Consultando…');
 
-  // La consulta anterior deja de presentarse
-  // como evaluación actual.
   mostrar({
     interpretacion: 'Consulta en curso.',
     conclusion: 'Esperando una nueva respuesta.',
@@ -1142,24 +780,15 @@ async function actualizar() {
   });
 
   const controller = new AbortController();
-
-  const timeout = setTimeout(
-    () => controller.abort(),
-    60000
-  );
+  const timeout = setTimeout(() => controller.abort(), 60000);
 
   try {
-    const response = await fetch(
-      '/estado?t=' + Date.now(),
-      {
-        cache: 'no-store',
-        signal: controller.signal
-      }
-    );
+    const response = await fetch('/estado?t=' + Date.now(), {
+      cache: 'no-store',
+      signal: controller.signal
+    });
 
-    if (!response.ok) {
-      throw new Error('HTTP ' + response.status);
-    }
+    if (!response.ok) throw new Error('HTTP ' + response.status);
 
     const payload = await response.json();
 
@@ -1168,18 +797,13 @@ async function actualizar() {
       typeof payload !== 'object' ||
       !payload.datos ||
       !Array.isArray(payload.datos.datos_faltantes)
-    ) {
-      throw new Error('Respuesta incompleta');
-    }
+    ) throw new Error('Respuesta incompleta');
 
     mostrar(payload);
-
   } catch (error) {
     mostrar({
-      interpretacion:
-        'No se pudo obtener el estado actual.',
-      conclusion:
-        'Consultar las fuentes oficiales.',
+      interpretacion: 'No se pudo obtener el estado actual.',
+      conclusion: 'Consultar las fuentes oficiales.',
       datos: {
         datos_faltantes: [
           'Falló la consulta del panel. ' +
@@ -1187,9 +811,7 @@ async function actualizar() {
         ]
       }
     });
-
     console.error('HydroGuard:', error);
-
   } finally {
     clearTimeout(timeout);
     busy = false;
@@ -1198,21 +820,15 @@ async function actualizar() {
   }
 }
 
-$('actualizar').addEventListener(
-  'click',
-  actualizar
-);
+$('actualizar').addEventListener('click', actualizar);
 
 setInterval(() => {
   if (!document.hidden) actualizar();
 }, 300000);
 
-document.addEventListener(
-  'visibilitychange',
-  () => {
-    if (!document.hidden) actualizar();
-  }
-);
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) actualizar();
+});
 
 actualizar();
 </script>
