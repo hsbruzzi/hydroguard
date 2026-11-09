@@ -19,8 +19,8 @@ CACHE_URL_DEFAULT = (
 LAT = -34.684
 LON = -58.342
 
-DEFAULT_ALERTA_M = 3.30
-DEFAULT_EVACUACION_M = 3.90
+DEFAULT_ALERTA_M = None
+DEFAULT_EVACUACION_M = None
 
 
 def _to_float(value):
@@ -511,7 +511,21 @@ def fetch_river_prefectura_direct():
             "river_errors": [],
         }
 
+        # PNA uses DD/MON/YY - HHMM, in Argentine local time.
+        import re
+        fechas = []
+        meses = {m: i for i, m in enumerate(
+            ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"], 1)}
+        for celda in row.tolist():
+            match = re.fullmatch(r"\s*(\d{2})/([A-Z]{3})/(\d{2})\s*-\s*(\d{2})(\d{2})\s*", str(celda).upper())
+            if match:
+                dia, mes, anio, hora, minuto = match.groups()
+                fechas.append(datetime(2000+int(anio), meses[mes], int(dia), int(hora), int(minuto),
+                                       tzinfo=timezone(timedelta(hours=-3))).isoformat())
+        resultado["thresholds_verified"] = alerta is not None and evacuacion is not None
         resultado.update(_metadatos_rio({
+            "observed_at": fechas[0] if fechas else None,
+            "reference": "Referencia propia del hidrómetro PNA Buenos Aires (cero no equiparado a PUR)",
             "source_name": "Prefectura Naval Argentina",
             "source_url": PREFECTURA_URL,
             "fetched_at": datetime.now(
@@ -537,22 +551,70 @@ def fetch_river_prefectura_direct():
         }
 
 
+def _validar_umbrales(resultado):
+    """Only a direct PNA row binds its thresholds to its own gauge."""
+    validos = (
+        resultado.get("river_source") == "prefectura_direct"
+        and resultado.get("river_site_name") == "Buenos Aires / De la Plata"
+        and resultado.get("river_reference") == "Referencia propia del hidrómetro PNA Buenos Aires (cero no equiparado a PUR)"
+        and resultado.get("thresholds_verified") is True
+        and resultado.get("river_unit") == "m"
+        and _to_float(resultado.get("alerta_rio_m")) is not None
+        and _to_float(resultado.get("evacuacion_rio_m")) is not None
+        and 0 < _to_float(resultado["alerta_rio_m"]) < _to_float(resultado["evacuacion_rio_m"])
+    )
+    resultado["thresholds_verified"] = validos
+    if not validos:
+        resultado["alerta_rio_m"] = None
+        resultado["evacuacion_rio_m"] = None
+        resultado["thresholds_source"] = None
+    return resultado
+
+
+def fetch_river_shn_direct():
+    from app.services.shn import fetch_hidro
+    payload = fetch_hidro()
+    if not payload:
+        raise ValueError("SHN: no se obtuvo una medición verificable")
+    resultado = {
+        "nivel_rio_m": _to_float(payload.get("value_m")),
+        "river_previous_value_m": _to_float(payload.get("previous_value_m")),
+        "river_variacion_m": _to_float(payload.get("variacion_m")),
+        "river_tendencia": payload.get("tendencia"),
+        "river_source": "hidro_html",
+        "river_site_name": payload.get("station"),
+        "river_errors": [],
+    }
+    resultado.update(_metadatos_rio(payload))
+    return _validar_umbrales(resultado)
+
+
 def fetch_river():
-    try:
-        cached = fetch_river_from_cache()
-        if cached is not None:
-            return cached
-
-    except Exception as e:
-        return {
-            "nivel_rio_m": None,
-            "river_source": "none",
-            "river_site_name": None,
-            "alerta_rio_m": DEFAULT_ALERTA_M,
-            "evacuacion_rio_m": DEFAULT_EVACUACION_M,
-            "thresholds_source": "thresholds_default_buenos_aires",
-            "river_errors": ["Cache JSON: " + str(e)],
-            **_metadatos_rio({}),
-        }
-
-    return fetch_river_prefectura_direct()
+    # Direct SHN is queried every request. Cache retrieval is never a measurement.
+    # Pick the newest known observation; do not compute deltas across providers.
+    candidatos = []
+    fallos = []
+    for proveedor in (fetch_river_shn_direct, fetch_river_from_cache,
+                      fetch_river_prefectura_direct):
+        try:
+            dato = _validar_umbrales(proveedor() or {})
+            fecha = _fecha_con_zona(dato.get("river_observed_at"))
+            valor = _to_float(dato.get("nivel_rio_m"))
+            ahora = datetime.now(timezone.utc)
+            if fecha is None or fecha > ahora or valor is None:
+                raise ValueError("Medición, valor o fecha no verificable")
+            candidatos.append(dato)
+            # Fresh direct SHN needs no slower fallback request.
+            if proveedor is fetch_river_shn_direct and (ahora-fecha).total_seconds() <= 10800:
+                dato["river_selection"] = "SHN directo vigente"
+                return dato
+        except Exception as error:
+            fallos.append(proveedor.__name__ + ": " + str(error))
+    if candidatos:
+        elegido = max(candidatos, key=lambda d: _fecha_con_zona(d["river_observed_at"]))
+        elegido["river_fallback_errors"] = fallos
+        elegido["river_selection"] = "Última medición verificable entre alternativas"
+        return elegido
+    return {"nivel_rio_m": None, "alerta_rio_m": None,
+            "evacuacion_rio_m": None, "thresholds_verified": False,
+            "river_source": "none", "river_errors": fallos}
