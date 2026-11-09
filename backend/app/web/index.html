@@ -512,6 +512,26 @@ function pronostico(items) {
 function mostrar(payload) {
   const d = payload.datos || {};
   const meta = payload.meta || {};
+  const limits = Array.isArray(d.datos_faltantes)
+    ? [...d.datos_faltantes] : ['Diagnóstico de disponibilidad ausente'];
+  function age(value) {
+    if (typeof value !== 'string' || !/(Z|[+-]\d{2}:\d{2})$/.test(value)) return null;
+    const n = (Date.now() - new Date(value).getTime()) / 60000;
+    return Number.isFinite(n) && n >= 0 ? n : null;
+  }
+  for (const [prefix, max] of [['river', 180], ['weather', 120]]) {
+    const n = age(d[prefix + '_observed_at']);
+    d[prefix + '_age_minutes'] = n;
+    if (n === null || n > max) {
+      limits.push(prefix === 'river' ? 'Río: dato vencido o fecha no verificable' : 'Meteorología: dato vencido o fecha no verificable');
+      d[prefix + '_data_status'] = 'dato atrasado o antigüedad no verificable';
+    }
+  }
+  if (d.thresholds_verified !== true) limits.push('Umbrales del río sin verificación para esta estación y referencia');
+  const responseAge = age(meta.updated_at);
+  if (responseAge === null || responseAge > 10) limits.push('Respuesta del servidor sin vigencia verificable');
+  d.datos_faltantes = [...new Set(limits)];
+  if (payload.semaforo === 'VERDE' && limits.length) payload.semaforo = 'INFORMACIÓN INSUFICIENTE';
 
   const state = ['VERDE', 'AMARILLO', 'ROJO'].includes(payload.semaforo)
     ? payload.semaforo
@@ -744,7 +764,7 @@ function mostrar(payload) {
     'Niveles configurados en el backend: alerta ' +
     medida(d.alerta_rio_m, 'm', 2) +
     '; evacuación ' + medida(d.evacuacion_rio_m, 'm', 2) +
-    '. Su aplicación requiere verificar estación y referencia. ' +
+    (d.thresholds_verified === true ? '. Verificados en la misma fila de Prefectura. ' : '. No aplicables: falta verificar estación y referencia. ') +
     'Vigencia operativa: río hasta 3 h; meteorología hasta 2 h. ' +
     'Son criterios propios de HydroGuard.'
   );
@@ -834,3 +854,4 @@ actualizar();
 </script>
 </body>
 </html>
+
