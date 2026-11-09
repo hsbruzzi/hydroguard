@@ -195,8 +195,11 @@ def calcular_semaforo(data):
         numero(data.get("nivel_rio_m"))
         if rio_vigente else None
     )
-    alerta = numero(data.get("alerta_rio_m"))
-    evacuacion = numero(data.get("evacuacion_rio_m"))
+    alerta = numero(data.get("alerta_rio_m")) if data.get("thresholds_verified") is True else None
+    evacuacion = numero(data.get("evacuacion_rio_m")) if data.get("thresholds_verified") is True else None
+    umbrales_validos = alerta is not None and evacuacion is not None and 0 < alerta < evacuacion
+    if not umbrales_validos:
+        alerta = evacuacion = None
 
     lluvia = (
         numero(data.get("lluvia_24h_mm"))
@@ -240,18 +243,19 @@ def calcular_semaforo(data):
         or (lluvia is not None and lluvia > 40)
         or (intensidad is not None and intensidad > 20)
         or (acumulado is not None and acumulado > 50)
-        or (
-            nivel is not None
-            and nivel > 2.5
-            and direccion in {"SE", "ESE", "SSE"}
-        )
-        or (nivel is not None and nivel > 2.0)
+
     )
 
     if amarillo:
         return "AMARILLO"
 
-    if data.get("datos_faltantes"):
+    if (data.get("datos_faltantes") or not rio_vigente or not meteo_vigente
+            or data.get("thresholds_verified") is not True
+            or not umbrales_validos
+            or data.get("smn_verificado") is not True
+            or any(numero(data.get(k)) is None for k in
+                   ("nivel_rio_m", "lluvia_actual_mm", "lluvia_24h_mm",
+                    "intensidad_mm_h", "lluvia_3dias_mm", "viento_kmh"))):
         return "INFORMACIÓN INSUFICIENTE"
 
     return "VERDE"
@@ -362,6 +366,13 @@ def build_estado():
     ]:
         data[campo] = river.get(campo)
 
+    data["thresholds_verified"] = river.get("thresholds_verified") is True
+    data["thresholds_source"] = river.get("thresholds_source")
+    data["river_selection"] = river.get("river_selection")
+    data["river_fallback_errors"] = river.get("river_fallback_errors") or []
+    data["weather_data_kind"] = weather.get("weather_data_kind")
+    data["weather_hourly_end_at"] = weather.get("weather_hourly_end_at")
+    data["weather_current_interval_seconds"] = weather.get("weather_current_interval_seconds")
     data["river_age_minutes"] = antiguedad_minutos(
         data["river_observed_at"]
     )
@@ -395,6 +406,8 @@ def build_estado():
     )
 
     faltantes = []
+    if not data["thresholds_verified"]:
+        faltantes.append("Umbrales del río no verificados para esta estación y referencia; evaluación fluvial limitada")
 
     if not smn_ok:
         faltantes.append(
