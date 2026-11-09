@@ -166,6 +166,9 @@ summary { min-height:44px; padding:14px 0; font-weight:600; cursor:pointer; }
 .technical { padding-left:20px; font-size:.83rem; overflow-wrap:anywhere; }
 .technical li { margin:10px 0; }
 footer { margin-top:23px; color:var(--muted); font-size:.76rem; }
+.usage { margin-top:24px; }
+.usage-counts { display:flex; flex-wrap:wrap; gap:18px 36px; margin:12px 0; }
+.usage-counts strong { display:block; font-size:1.5rem; font-variant-numeric:tabular-nums; }
 #motivos { padding-left:21px; }
 [hidden] { display:none !important; }
 @media (prefers-color-scheme:light) {
@@ -383,6 +386,18 @@ footer { margin-top:23px; color:var(--muted); font-size:.76rem; }
     diferir de las utilizadas en el panel.
   </p>
 </details>
+
+<section class="panel usage" aria-labelledby="uso-titulo">
+  <h3 id="uso-titulo">Consultas del panel</h3>
+  <div class="usage-counts">
+    <div><strong id="visitas-total">Sin dato</strong><span class="muted">Aperturas acumuladas</span></div>
+    <div><strong id="visitas-activos">Sin dato</strong><span class="muted">Navegadores activos · últimos 2 min</span></div>
+  </div>
+  <p id="visitas-estado" class="muted" role="status">Consultando contador…</p>
+  <p class="muted">Cada apertura o recarga suma una consulta. Las actualizaciones automáticas y el botón Actualizar no suman.
+    Los navegadores activos son una estimación, no una identificación de personas.
+    El acumulado puede reiniciarse si se pierde el historial del contador.</p>
+</section>
 
 <footer>
   El seguimiento complementa las alertas oficiales y las indicaciones
@@ -852,6 +867,79 @@ document.addEventListener('visibilitychange', () => {
 
 actualizar();
 </script>
+<script>
+// Contador independiente: sus fallos no afectan la evaluación hídrica.
+(() => {
+  const total = document.getElementById('visitas-total');
+  const activos = document.getElementById('visitas-activos');
+  const estado = document.getElementById('visitas-estado');
+  const sinDato = mensaje => {
+    total.textContent = activos.textContent = 'Sin dato';
+    estado.textContent = mensaje;
+  };
+  let visitaId, navegadorId;
+  try {
+    visitaId = crypto.randomUUID();
+    navegadorId = crypto.randomUUID();
+    try {
+      const guardado = localStorage.getItem('hydroguard_navegador_v1');
+      if (guardado && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(guardado)) {
+        navegadorId = guardado;
+      } else {
+        localStorage.setItem('hydroguard_navegador_v1', navegadorId);
+      }
+    } catch {
+      // Si el navegador bloquea almacenamiento, esta pestaña usa un ID temporal.
+    }
+  } catch {
+    sinDato('Este navegador no permite iniciar el contador.');
+    return;
+  }
+  let pendiente = false;
+  async function contacto() {
+    if (document.hidden || pendiente) return;
+    pendiente = true;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12000);
+    try {
+      const response = await fetch('/visitas', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({visita_id: visitaId, navegador_id: navegadorId}),
+        cache: 'no-store',
+        signal: controller.signal
+      });
+      if (!response.ok) throw new Error('Contador no disponible');
+      const data = await response.json();
+      if (!data || !Number.isSafeInteger(data.consultas_total) || data.consultas_total < 0 ||
+          !Number.isSafeInteger(data.navegadores_activos) || data.navegadores_activos < 0 ||
+          data.ventana_activos_segundos !== 120 ||
+          !Number.isFinite(Date.parse(data.desde)) ||
+          !Number.isFinite(Date.parse(data.actualizado_at))) throw new Error('Respuesta incompleta');
+      const edad = Date.now() - Date.parse(data.actualizado_at);
+      if (edad < -60000 || edad > 120000) throw new Error('Contador atrasado');
+      total.textContent = data.consultas_total.toLocaleString('es-AR');
+      activos.textContent = data.navegadores_activos.toLocaleString('es-AR');
+      const formato = {timeZone:'America/Argentina/Buenos_Aires', dateStyle:'short', timeStyle:'short'};
+      estado.textContent = 'Acumulado desde ' + new Date(data.desde).toLocaleString('es-AR', formato) +
+        ' ART · actualizado ' + new Date(data.actualizado_at).toLocaleTimeString('es-AR', {
+          timeZone:'America/Argentina/Buenos_Aires', hour:'2-digit', minute:'2-digit'
+        }) + ' ART';
+    } catch {
+      sinDato('Contador temporalmente no disponible.');
+    } finally {
+      clearTimeout(timeout);
+      pendiente = false;
+    }
+  }
+  contacto();
+  setInterval(contacto, 45000);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) contacto();
+  });
+})();
+</script>
 </body>
 </html>
+
 
