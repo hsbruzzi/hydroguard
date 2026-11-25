@@ -5,13 +5,13 @@
   "station": "Buenos Aires",
   "reference": "Plano Único de Reducción de Sondajes del Río de la Plata",
   "unit": "m",
-  "value_m": 2.03,
-  "observed_at": "2026-11-25T10:45:00-03:00",
-  "previous_value_m": 2.28,
-  "previous_observed_at": "2026-11-25T09:45:00-03:00",
-  "variacion_m": -0.25,
+  "value_m": 1.11,
+  "observed_at": "2026-11-25T19:45:00-03:00",
+  "previous_value_m": 1.21,
+  "previous_observed_at": "2026-11-25T18:45:00-03:00",
+  "variacion_m": -0.1,
   "interval_hours": 1.0,
   "tendencia": "baja",
-  "fetched_at": "2026-11-25T14:42:35.302414+00:00",
-  "timestamp": "2026-11-25T14:42:35.302414+00:00"
+  "fetched_at": "2026-11-25T23:18:11.117464+00:00",
+  "timestamp": "2026-11-25T23:18:11.117464+00:00"
 }
